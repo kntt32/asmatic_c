@@ -1,7 +1,7 @@
 #pragma once
 #include "types.h"
 #include "vec.h"
-#include "string.h"
+#include "str.h"
 #include "register.h"
 
 typedef struct {
@@ -37,9 +37,11 @@ typedef struct {
 
 typedef struct {
     char filename[256];
+    
     u32 stack_usage;
+
     Vec normal_types;// Vec<Type>
-    Vec struct_typees;// Vec<Type>
+    Vec struct_types;// Vec<Type>
     Vec enum_types;// Vec<Type>
     Vec union_types;// Vec<Type>
 
@@ -47,5 +49,21 @@ typedef struct {
 
     Vec global_variables;// Vec<Variable>
     Vec auto_variables;// Vec<Variable>
+
+    String code;
+    String error;
 } Generator;
+
+Generator Generator_new(optional in char* filename);
+
+optional Type* Generator_get_normal_types(in Generator* self, in char* name);
+
+optional Type* Generator_get_struct_types(in Generator* self, in char* name); 
+
+optional Type* Generator_get_enum_types(in Generator* self, in char* name); 
+
+optional Type* Generator_get_union_types(in Generator* self, in char* name); 
+
+
+
 

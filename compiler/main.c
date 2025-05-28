@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include "parser.h"
+#include "gen.h"
 
 int main() {
     Parser parser = Parser_new("abcde { a { b }} 123 static @");
@@ -16,4 +17,7 @@ int main() {
     printf("%s\n", parser.src);
     Parser_parse_symbol(&parser, "@");
     printf("%s\n", parser.src);
+
+    Generator gen = Generator_new(NULL);
+    return 0;
 }

@@ -52,6 +52,19 @@ void Vec_last(Vec* self, void* restrict ptr) {
     }
 }
 
+Vec Vec_from(void* src, u32 len, u32 size) {
+    Vec vec = Vec_new(size);
+    Vec_append(&vec, src, len);
+    return vec;
+}
+
+void Vec_append(Vec* self, void* src, u32 len) {
+    for(u32 i=0; i<len; i++) {
+        Vec_push(self, src + self->size * i);
+    }
+    return;
+}
+
 u32 Vec_len(Vec* self) {
     return self->len;
 }
@@ -63,3 +76,4 @@ u32 Vec_capacity(Vec* self) {
 u32 Vec_size(Vec* self) {
     return self->size;
 }
+
