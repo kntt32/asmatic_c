@@ -7,9 +7,22 @@
 typedef struct {
     char name[256];
     enum {Type_primitive, Type_Struct, Type_Enum, Type_Union, Type_FnPtr} type;
-    union {} property;
+    union {
+        Vec members;// Vec<StructMember> struct/union
+        Vec enums;  // Vec<EnumMember> enum
+    } property;
     u32 ref_depth;
 } Type;
+
+typedef struct {
+    char name[256];
+    Type type;
+} StructMember;
+
+typedef struct {
+    char name[256];
+    i32 value;
+} EnumMember;
 
 typedef struct {
     enum {Storage_Register, Storage_Stack, Storage_Data} type;
@@ -53,6 +66,22 @@ typedef struct {
     String code;
     String error;
 } Generator;
+
+ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out StructMember* struct_member);
+
+ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type);
+
+void Type_print(Type* self);
+
+void Type_free(Type self);
+
+void StructMember_print(StructMember* self);
+
+void EnumMember_print(EnumMember* self);
+
+void Data_free(Data self);
+
+void Variable_free(Variable self);
 
 Generator Generator_new(optional in char* filename);
 

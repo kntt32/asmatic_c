@@ -3,21 +3,22 @@
 #include "gen.h"
 
 int main() {
-    Parser parser = Parser_new("abcde { a { b }} 123 static @");
-    char token[256] = "";
-    Parser_parse_ident(&parser, token);
-    printf("%s\n", token);
-    Parser parser2;
-    printf("%s\n", Parser_parse_block(&parser, &parser2).msg);
-    printf("%s\n", parser2.src);
-    i64 value = 0;
-    Parser_parse_number(&parser, &value);
-    printf("%lld\n", value);
-    Parser_parse_keyword(&parser, "static");
-    printf("%s\n", parser.src);
-    Parser_parse_symbol(&parser, "@");
-    printf("%s\n", parser.src);
-
     Generator gen = Generator_new(NULL);
+    Parser parser = Parser_new("struct MyStruct { i32 a; i32 b;}");
+    Type type;
+    ParserMsg msg = Type_parse(&parser, &gen, &type);
+    if(ParserMsg_is_success(msg)) {
+        /*printf("name: %s\ntype: %d\n", type.name, type.type);
+        printf("members(%d):\n", Vec_len(&type.property.members));
+        for(u32 i=0; i<Vec_len(&type.property.members); i++) {
+            StructMember* member = Vec_index(&type.property.members, i);
+            printf("    type: %s name: %s\n", member->type.name, member->name);
+        }
+        printf("ref_depth: %d\n", type.ref_depth);*/
+        Type_print(&type);
+    }else {
+        printf("err:%d:%s\n", msg.line, msg.msg);
+    }
+
     return 0;
 }

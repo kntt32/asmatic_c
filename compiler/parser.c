@@ -84,17 +84,15 @@ static bool Parser_skip(inout Parser* self) {
 }
 
 static ParserMsg Parser_parse_block_helper(inout Parser* self, out Parser* parser, in char* start, in char* end) {
-    Parser self_copy = *self;
+    Parser self_copy = *self; 
 
-    if(Parser_parse_symbol(&self_copy, start).msg[0] != '\0') {
-        ParserMsg msg = {self_copy.line, ""};
-        sprintf(msg.msg, "expected symbol \"%s\"", start);
-        return msg;
-    }
+    PARSERMSG_UNWRAP(
+        Parser_parse_symbol(&self_copy, start)
+    );
 
     *parser = self_copy;
 
-    while(Parser_parse_symbol(&self_copy, end).msg[0] != '\0') {
+    while(!ParserMsg_is_success(Parser_parse_symbol(&self_copy, end))) {
         if(!Parser_skip(&self_copy)) {
             ParserMsg msg = {self_copy.line, ""};
             sprintf(msg.msg, "expected symbol \"%s\"", end);
@@ -189,7 +187,9 @@ ParserMsg Parser_parse_index(inout Parser* self, out Parser* parser) {
     return Parser_parse_block_helper(self, parser, "[", "]");
 }
 
-
+bool ParserMsg_is_success(ParserMsg self) {
+    return self.msg[0] == '\0';
+}
 
 
 

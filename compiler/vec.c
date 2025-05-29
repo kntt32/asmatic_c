@@ -24,6 +24,15 @@ void* Vec_as_ptr(Vec* self) {
     return self->ptr;
 }
 
+void Vec_print(Vec* self, void (*f)(void*)) {
+    printf("Vec[");
+    for(u32 i=0; i<self->len; i++) {
+        f(Vec_index(self, i));
+        printf(", ");
+    }
+    printf("]");
+}
+
 void Vec_push(Vec* self, void* restrict object) {
     if(self->capacity == self->len) {
         u32 new_capacity = (self->len + 1) * 2;

@@ -17,6 +17,8 @@ void* Vec_index(Vec* self, u32 index);
 
 void* Vec_as_ptr(Vec* self);
 
+void Vec_print(Vec* self, void (*f)(void*));
+
 void Vec_push(Vec* self, void* object);
 
 void Vec_pop(Vec* self, void* ptr);
