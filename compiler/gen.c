@@ -41,7 +41,7 @@ static ParserMsg Type_parse_struct_literal(inout Parser* parser, in Generator* g
     Parser block_parser;
     PARSERMSG_UNWRAP(
         Parser_parse_block(&parser_copy, &block_parser),
-        Vec_free(type->property.members),
+        (void)(NULL)
     );
 
     while(!Parser_is_empty(&block_parser)) {
@@ -54,7 +54,7 @@ static ParserMsg Type_parse_struct_literal(inout Parser* parser, in Generator* g
             Parser_parse_symbol(&block_parser, ";"),
             (void)(NULL)
         );
-        Vec_free(type->property.members);
+        Vec_push(&type->property.members, &struct_member);
     }
     *parser = parser_copy;
 
@@ -185,7 +185,6 @@ void Type_free(Type self) {
             Vec_free(self.property.enums);
             break;
         default:
-            break;
     }
 
     return;
