@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include "vec.h"
 #include "str.h"
 
 static char null_char = '\0';

@@ -35,37 +35,85 @@ static ParserMsg Type_parse_struct_literal(inout Parser* parser, in Generator* g
     if(!ParserMsg_is_success(Parser_parse_ident(&parser_copy, type->name))) {
         type->name[0] = '\0';
     }
-    type->type = Type_Struct;
     type->property.members = Vec_new(sizeof(StructMember));
     type->ref_depth = 0;
     
     Parser block_parser;
     PARSERMSG_UNWRAP(
-        Parser_parse_block(&parser_copy, &block_parser)
+        Parser_parse_block(&parser_copy, &block_parser),
+        (void)(NULL)
     );
 
     while(!Parser_is_empty(&block_parser)) {
         StructMember struct_member;
         PARSERMSG_UNWRAP(
-            StructMember_parse(&block_parser, generator, &struct_member)
+            StructMember_parse(&block_parser, generator, &struct_member),
+            (void)(NULL)
         );
         PARSERMSG_UNWRAP(
-            Parser_parse_symbol(&block_parser, ";")
+            Parser_parse_symbol(&block_parser, ";"),
+            (void)(NULL)
         );
         Vec_push(&type->property.members, &struct_member);
     }
-
     *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
 }
 
+static ParserMsg Type_parse_enum_literal(inout Parser* parser, in Generator* generator, out Type* type) {
+    TODO();
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg Type_parse_union_literal(inout Parser* parser, in Generator* generator, out Type* type) {
+    return Type_parse_struct_literal(parser, generator, type);
+}
+
 static ParserMsg Type_parse_struct(inout Parser* parser, in Generator* generator, out Type* type) {
-    if(Type_parse_helper(parser, generator, Generator_get_struct_types, type).msg[0] == '\0') {
-        return SUCCESS_PARSER_MSG;
+    if(!Type_parse_helper(parser, generator, Generator_get_struct_types, type).msg[0] == '\0') {
+        PARSERMSG_UNWRAP(
+            Type_parse_struct_literal(parser, generator, type),
+            (void)(NULL)
+        );
+        type->type = Type_Struct;
     }
 
-    return Type_parse_struct_literal(parser, generator, type);
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg Type_parse_enum(inout Parser* parser, in Generator* generator, out Type* type) {
+    if(!ParserMsg_is_success(Type_parse_helper(parser, generator, Generator_get_enum_types, type))) {
+        PARSERMSG_UNWRAP(
+            Type_parse_enum_literal(parser, generator, type),
+            (void)(NULL)
+        );
+
+        i32 value = 0;
+        for(u32 i=0; i<Vec_len(&type->property.enums); i++) {
+            EnumMember* member = Vec_index(&type->property.enums, i);
+            if(member->value != 0) {
+                value = member->value;
+            }else {
+                member->value = value;
+            }
+            value ++;
+        }
+    }
+
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg Type_parse_union(inout Parser* parser, in Generator* generator, out Type* type) {
+    if(!ParserMsg_is_success(Type_parse_helper(parser, generator, Generator_get_union_types, type))) {
+        PARSERMSG_UNWRAP(
+            Type_parse_union_literal(parser, generator, type),
+            (void)(NULL)
+        );
+        type->type = Type_Union;
+    }
+   
+    return SUCCESS_PARSER_MSG;
 }
 
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type) {
@@ -73,19 +121,23 @@ ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* ty
 
     if(ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "struct"))) {
         PARSERMSG_UNWRAP(
-            Type_parse_struct(&parser_copy, generator, type) 
+            Type_parse_struct(&parser_copy, generator, type),
+            (void)(NULL)
         );
     }else if(ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "enum"))) {
         PARSERMSG_UNWRAP(
-            Type_parse_helper(&parser_copy, generator, Generator_get_enum_types, type)
+            Type_parse_enum(&parser_copy, generator, type),
+            (void)(NULL)
         );
     }else if(ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "union"))) {
         PARSERMSG_UNWRAP(
-            Type_parse_helper(&parser_copy, generator, Generator_get_union_types, type)
+            Type_parse_union(&parser_copy, generator, type),
+            (void)(NULL)
         );
     }else {
         PARSERMSG_UNWRAP(
-            Type_parse_helper(&parser_copy, generator, Generator_get_normal_types, type)
+            Type_parse_helper(&parser_copy, generator, Generator_get_normal_types, type),
+            (void)(NULL)
         );
     }
     
@@ -138,26 +190,6 @@ void Type_free(Type self) {
     return;
 }
 
-void StructMember_print(StructMember* self) {
-    printf("StructMember { name: %s, type: ", self->name);
-    Type_print(&self->type);
-    printf(" }");
-    return;
-}
-
-void EnumMember_print(EnumMember* self) {
-    printf("EnumMember { name: %s, value: %d }", self->name, self->value);
-    return;
-}
-
-void Data_free(Data self) {
-    Type_free(self.type);
-}
-
-void Variable_free(Variable self) {
-   Data_free(self.data); 
-}
-
 ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out StructMember* struct_member) {
     // ex: i32 n
     Parser parser_copy = *parser;
@@ -174,6 +206,50 @@ ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out 
     *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
+}
+
+void StructMember_print(StructMember* self) {
+    printf("StructMember { name: %s, type: ", self->name);
+    Type_print(&self->type);
+    printf(" }");
+    return;
+}
+
+ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out EnumMember* enum_member) {
+    (void) generator;
+    // ex: MyEnumMember1 = 5
+    //     MyEnumMember2
+    Parser parser_copy = *parser;
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_ident(&parser_copy, enum_member->name),
+        (void)(NULL)
+    );
+    i64 value = 0;
+    if(ParserMsg_is_success(Parser_parse_symbol(&parser_copy, "="))) {
+        PARSERMSG_UNWRAP(
+            Parser_parse_number(&parser_copy, &value),
+            (void)(NULL)
+        );
+    }
+    enum_member->value = value;
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+void EnumMember_print(EnumMember* self) {
+    printf("EnumMember { name: %s, value: %d }", self->name, self->value);
+    return;
+}
+
+void Data_free(Data self) {
+    Type_free(self.type);
+}
+
+void Variable_free(Variable self) {
+   Data_free(self.data); 
 }
 
 Generator Generator_new(optional in char* filename) {
@@ -203,7 +279,7 @@ Generator Generator_new(optional in char* filename) {
 }
 
 static optional Type* Generator_get_type_helper(in Vec* types, in char* name) {
-    for(u32 i=0; i<Vec_len(types); i++) {
+    for(i32 i=Vec_len(types)-1; 0<=i; i--) {
         Type* type = Vec_index(types, i);
         if(strcmp(name, type->name) == 0) {
             return type;

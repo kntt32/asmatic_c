@@ -35,9 +35,10 @@ ParserMsg Parser_parse_paren(inout Parser* self, out Parser* parser);
 
 ParserMsg Parser_parse_index(inout Parser* self, out Parser* parser);
 
-#define PARSERMSG_UNWRAP(parser_msg) {\
+#define PARSERMSG_UNWRAP(parser_msg, catch_proc) {\
     ParserMsg msg = (parser_msg);\
     if(!ParserMsg_is_success(msg)) {\
+        catch_proc;\
         return msg;\
     }\
 }

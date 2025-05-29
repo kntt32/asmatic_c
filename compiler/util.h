@@ -1,7 +1,6 @@
 #pragma once
 
 #include "types.h"
-#include "parser.h"
 
 char* Util_trim_str(in char* str);
 

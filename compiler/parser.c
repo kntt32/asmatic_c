@@ -87,7 +87,8 @@ static ParserMsg Parser_parse_block_helper(inout Parser* self, out Parser* parse
     Parser self_copy = *self; 
 
     PARSERMSG_UNWRAP(
-        Parser_parse_symbol(&self_copy, start)
+        Parser_parse_symbol(&self_copy, start),
+        (void)(NULL)
     );
 
     *parser = self_copy;

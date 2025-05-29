@@ -67,15 +67,17 @@ typedef struct {
     String error;
 } Generator;
 
-ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out StructMember* struct_member);
-
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type);
 
 void Type_print(Type* self);
 
 void Type_free(Type self);
 
+ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out StructMember* struct_member);
+
 void StructMember_print(StructMember* self);
+
+ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out EnumMember* enum_member);
 
 void EnumMember_print(EnumMember* self);
 
