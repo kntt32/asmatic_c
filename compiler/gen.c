@@ -185,6 +185,7 @@ void Type_free(Type self) {
             Vec_free(self.property.enums);
             break;
         default:
+            break;
     }
 
     return;
