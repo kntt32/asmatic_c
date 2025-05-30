@@ -36,5 +36,6 @@ typedef unsigned long long u64;
     strcpy(ptr, str);\
     ptr\
 )
+#define MAX(x, y) (x > y)?(x):(y)
 
 

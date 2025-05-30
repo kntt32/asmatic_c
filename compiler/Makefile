@@ -10,7 +10,7 @@ vec.o: vec.c vec.h types.h
 str.o: str.c str.h vec.h
 util.o: util.c util.h types.h
 register.o: register.c register.h types.h
-gen.o: gen.c gen.h types.h parser.h
+gen.o: gen.c gen.h types.h parser.h register.h
 
 parser.h: types.h
 str.h: types.h vec.h

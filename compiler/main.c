@@ -4,7 +4,7 @@
 
 int main() {
     Generator gen = Generator_new(NULL);
-    Parser parser = Parser_new("enum MyEnum { Enum1 = 3, Enum2 = 7, Enum3 }");
+    Parser parser = Parser_new("struct MyStruct { i32 a; i32 b;}");
     Type type;
     ParserMsg msg = Type_parse(&parser, &gen, &type);
     if(ParserMsg_is_success(msg)) {

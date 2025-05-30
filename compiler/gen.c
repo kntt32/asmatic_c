@@ -2,9 +2,10 @@
 #include "types.h"
 #include "gen.h"
 #include "parser.h"
+#include "register.h"
 
 static Type PRIMITIVE_TYPES[] = {
-    {"i32", Type_primitive, {}, 0}
+    {"i32", Type_primitive, {}, 0, 4, 4}
 };
 
 static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator, optional Type* (in *getter)(in Generator*, in char*), out Type* type) {
@@ -63,6 +64,8 @@ static ParserMsg Type_parse_literal_struct_inner_parser(inout Parser* parser, in
     Parser parser_copy = *parser;
 
     type->property.members = Vec_new(sizeof(StructMember));
+    u32 offset = 0;
+    u32 align = 1;
 
     while(!Parser_is_empty(&parser_copy)) {
         StructMember struct_member;
@@ -74,8 +77,15 @@ static ParserMsg Type_parse_literal_struct_inner_parser(inout Parser* parser, in
             Parser_parse_symbol(&parser_copy, ";"),
             Vec_free(type->property.members)
         );
+        u32 member_align = struct_member.type.align;
+        struct_member.offset = ((offset + member_align - 1)/member_align)*member_align;
+        offset = struct_member.offset + struct_member.type.size;
+        align = MAX(align, member_align);
+
         Vec_push(&type->property.members, &struct_member);
     }
+    type->align = align;
+    type->size = offset;
     *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
@@ -89,7 +99,7 @@ static ParserMsg Type_parse_literal_enum_inner_parser(inout Parser* parser, in G
     while(!Parser_is_empty(&parser_copy)) {
         EnumMember member;
         PARSERMSG_UNWRAP(
-            EnumMember_parse(&parser_copy, generator,&member.name),
+            EnumMember_parse(&parser_copy, generator, &member),
             Vec_free(type->property.enums)
         );
         
@@ -100,6 +110,8 @@ static ParserMsg Type_parse_literal_enum_inner_parser(inout Parser* parser, in G
 
         Vec_push(&type->property.enums, &member);
     }
+    type->align = 4;
+    type->size = 4;
 
     *parser = parser_copy;
 
@@ -211,7 +223,7 @@ void Type_print(Type* self) {
             printf("none");
             break;
     }
-    printf(", ref_depth: %d }", self->ref_depth);
+    printf(", ref_depth: %d, align: %u, size: %u }", self->ref_depth, self->align, self->size);
 
     return;
 }
@@ -253,7 +265,7 @@ ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out 
 void StructMember_print(StructMember* self) {
     printf("StructMember { name: %s, type: ", self->name);
     Type_print(&self->type);
-    printf(" }");
+    printf(", offset: %u }", self->offset);
     return;
 }
 
@@ -286,6 +298,31 @@ void EnumMember_print(EnumMember* self) {
     return;
 }
 
+ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Type* type, out Storage* storage) {
+    Register reg;
+    if(ParserMsg_is_success(Parser_parse_keyword(parser, "stack"))) {
+        storage->type = Storage_Stack;
+        storage->place.base_offset = Generator_stack_push(generator, type);
+    }else if(ParserMsg_is_success(Parser_parse_keyword(parser, "data"))) {
+        storage->type = Storage_Data;
+    }else if(ParserMsg_is_success(Register_parse(parser, &reg))) {
+        storage->type = Storage_Register;
+        storage->place.reg = reg;
+    }else {
+        ParserMsg msg = {parser->line, "expected storage"};
+        return msg;
+    }
+
+    return SUCCESS_PARSER_MSG;
+}
+
+ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data* data) {
+    Parser parser_copy = *parser;
+
+    TODO();
+    return SUCCESS_PARSER_MSG;
+}
+
 void Data_free(Data self) {
     Type_free(self.type);
 }
@@ -302,7 +339,7 @@ Generator Generator_new(optional in char* filename) {
     }
     strcpy(generator.filename, filename);
     
-    generator.stack_usage = 0;
+    generator.stack = 0;
 
     generator.normal_types = Vec_from(PRIMITIVE_TYPES, LEN(PRIMITIVE_TYPES), sizeof(Type));
     generator.struct_types = Vec_new(sizeof(Type));
@@ -345,5 +382,11 @@ optional Type* Generator_get_enum_types(in Generator* self, in char* name) {
 
 optional Type* Generator_get_union_types(in Generator* self, in char* name) {
     return Generator_get_type_helper(&self->union_types, name);
+}
+
+u32 Generator_stack_push(inout Generator* self, in Type* type) {
+    u32 stack_offset = (self->stack + type->align - 1)/type->align*type->align;
+    self->stack = stack_offset + type->size;
+    return stack_offset;
 }
 

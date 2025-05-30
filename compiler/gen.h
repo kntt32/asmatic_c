@@ -12,11 +12,14 @@ typedef struct {
         Vec enums;  // Vec<EnumMember> enum
     } property;
     u32 ref_depth;
+    u32 align;
+    u32 size;
 } Type;
 
 typedef struct {
     char name[256];
     Type type;
+    u32 offset;
 } StructMember;
 
 typedef struct {
@@ -25,7 +28,7 @@ typedef struct {
 } EnumMember;
 
 typedef struct {
-    enum {Storage_Register, Storage_Stack, Storage_Data} type;
+    enum {Storage_Default, Storage_Register, Storage_Stack, Storage_Data} type;
     union {Register reg; i32 base_offset;} place;
 } Storage;
 
@@ -51,7 +54,7 @@ typedef struct {
 typedef struct {
     char filename[256];
     
-    u32 stack_usage;
+    u32 stack;
 
     Vec normal_types;// Vec<Type>
     Vec struct_types;// Vec<Type>
@@ -81,6 +84,8 @@ ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out En
 
 void EnumMember_print(EnumMember* self);
 
+ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Type* type, out Storage* storage);
+
 void Data_free(Data self);
 
 void Variable_free(Variable self);
@@ -95,6 +100,5 @@ optional Type* Generator_get_enum_types(in Generator* self, in char* name);
 
 optional Type* Generator_get_union_types(in Generator* self, in char* name); 
 
-
-
+u32 Generator_stack_push(inout Generator* self, in Type* type);
 
