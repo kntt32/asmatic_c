@@ -12,12 +12,8 @@ Parser Parser_new(in char* src) {
     return parser;
 }
 
-bool Parser_is_empty(in Parser* self) {
-    return 0 == self->len;
-}
-
 static char Parser_read(inout Parser* self) {
-    if(Parser_is_empty(self)) {
+    if(self->src[0] == '\0') {
         return '\0';
     }
 
@@ -34,14 +30,14 @@ static char Parser_read(inout Parser* self) {
 }
 
 static void Parser_skip_space(inout Parser* self) {
-    while(isspace(self->src[0]) && !Parser_is_empty(self)) {
+    while(isspace(self->src[0]) && self->src[0] != '\0') {
         Parser_read(self);
     }
 }
 
 static bool Parser_is_gap(in Parser* self) {
     char c = self->src[0];
-    return !Parser_is_empty(self) && (isspace(c) || ispunct(c));
+    return self->src[0] != '\0' && (isspace(c) || ispunct(c));
 }
 
 static void Parser_run_for_gap(inout Parser* self, out char token[256]) {
@@ -105,6 +101,11 @@ static ParserMsg Parser_parse_block_helper(inout Parser* self, out Parser* parse
     *self = self_copy;
 
     return SUCCESS_PARSER_MSG;
+}
+
+bool Parser_is_empty(in Parser* self) {
+    Parser_skip_space(self);
+    return 0 == self->len;
 }
 
 ParserMsg Parser_parse_ident(inout Parser* self, out char token[256]) {

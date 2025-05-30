@@ -4,7 +4,7 @@
 
 int main() {
     Generator gen = Generator_new(NULL);
-    Parser parser = Parser_new("enum MyUnion { a, b,}");
+    Parser parser = Parser_new("union MyUnion { i32 a; i32 b; }");
     Type type;
     ParserMsg msg = Type_parse(&parser, &gen, &type);
     if(ParserMsg_is_success(msg)) {
