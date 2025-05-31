@@ -384,6 +384,52 @@ void Data_free(Data self) {
     Type_free(self.type);
 }
 
+ParserMsg Variable_parse(inout Parser* parser, in Generator* generator, out Variable* variable) {
+    // (const) (static) $data $name ([$len])
+    Parser parser_copy = *parser;
+
+    variable->const_flag = ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "const"));
+    variable->static_flag = ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "static"));
+
+    PARSERMSG_UNWRAP(
+        Data_parse(&parser_copy, generator, &variable->data),
+        (void)(NULL)
+    );
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_ident(&parser_copy, variable->name),
+        (void)(NULL)
+    );
+
+    Parser index_parser;
+    if(ParserMsg_is_success(Parser_parse_index(&parser_copy, &index_parser))) {
+        i64 array_len;
+        PARSERMSG_UNWRAP(
+            Parser_parse_number(&index_parser, &array_len),
+        );
+        variable->len = (i32)array_len;
+
+        if(!Parser_is_empty(&index_parser)) {
+            ParserMsg msg = {index_parser.line, "expected array length"};
+            return msg;
+        }
+    }else {
+        variable->len = -1;
+    }
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+void Variable_print(in Variable* self) {
+    printf("Variable { name: %s, data: ", self->name);
+    Data_print(&self->data);
+    printf(", const_flag: %s, static_flag: %s, len: %d }", BOOL_TO_STR(self->const_flag), BOOL_TO_STR(self->static_flag), self->len);
+
+    return;
+}
+
 void Variable_free(Variable self) {
    Data_free(self.data); 
 }
@@ -445,5 +491,22 @@ u32 Generator_stack_push(inout Generator* self, in Type* type) {
     u32 stack_offset = (self->stack + type->align - 1)/type->align*type->align;
     self->stack = stack_offset + type->size;
     return stack_offset;
+}
+
+void Generator_free(Generator self) {
+    Vec_free(self.normal_types);
+    Vec_free(self.struct_types);
+    Vec_free(self.enum_types);
+    Vec_free(self.union_types);
+
+    Vec_free(self.functions);
+    
+    Vec_free(self.global_variables);
+    Vec_free(self.auto_variables);
+    
+    String_free(self.code);
+    String_free(self.error);
+
+    return;
 }
 

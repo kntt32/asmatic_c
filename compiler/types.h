@@ -37,5 +37,5 @@ typedef unsigned long long u64;
     ptr\
 )
 #define MAX(x, y) (x > y)?(x):(y)
-
+#define BOOL_TO_STR(b) (b)?("true"):("false")
 

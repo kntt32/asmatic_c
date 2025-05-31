@@ -4,15 +4,17 @@
 
 int main() {
     Generator gen = Generator_new(NULL);
-    Parser parser = Parser_new("struct MyStruct { i32* a; i32 b;} @ stack");
-    Data data;
-    ParserMsg msg = Data_parse(&parser, &gen, &data);
+    Parser parser = Parser_new("const static i32@data a[5]");
+    Variable variable;
+    ParserMsg msg = Variable_parse(&parser, &gen, &variable);
     if(ParserMsg_is_success(msg)) {
-        Data_print(&data);
+        Variable_print(&variable);
         printf("\n");
+        Variable_free(variable);
     }else {
         printf("err:%d:%s\n", msg.line, msg.msg);
     }
+    Generator_free(gen);
 
     return 0;
 }
