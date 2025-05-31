@@ -5,6 +5,7 @@
 static struct { Register reg; char* str; } REGISTER_TABLE[] = {
     {Rsp, "rsp"},
     {Rbp, "rbp"},
+
     {Rax, "rax"},
     {Rcx, "rcx"},
     {Rdx, "rdx"},
@@ -19,6 +20,23 @@ static struct { Register reg; char* str; } REGISTER_TABLE[] = {
     {R13, "r13"},
     {R14, "r14"},
     {R15, "r15"},
+
+    {Xmm0, "xmm0"},
+    {Xmm1, "xmm1"},
+    {Xmm2, "xmm2"},
+    {Xmm3, "xmm3"},
+    {Xmm4, "xmm4"},
+    {Xmm5, "xmm5"},
+    {Xmm6, "xmm6"},
+    {Xmm7, "xmm7"},
+    {Xmm8, "xmm8"},
+    {Xmm9, "xmm9"},
+    {Xmm10, "xmm10"},
+    {Xmm11, "xmm11"},
+    {Xmm12, "xmm12"},
+    {Xmm13, "xmm13"},
+    {Xmm14, "xmm14"},
+    {Xmm15, "xmm15"},
 };
 
 ParserMsg Register_parse(Parser* parser, Register* restrict ptr) {
