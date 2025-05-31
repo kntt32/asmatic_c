@@ -4,11 +4,11 @@
 
 int main() {
     Generator gen = Generator_new(NULL);
-    Parser parser = Parser_new("struct MyStruct { i32 a; i32 b;}");
-    Type type;
-    ParserMsg msg = Type_parse(&parser, &gen, &type);
+    Parser parser = Parser_new("struct MyStruct { i32* a; i32 b;} @ stack");
+    Data data;
+    ParserMsg msg = Data_parse(&parser, &gen, &data);
     if(ParserMsg_is_success(msg)) {
-        Type_print(&type);
+        Data_print(&data);
         printf("\n");
     }else {
         printf("err:%d:%s\n", msg.line, msg.msg);

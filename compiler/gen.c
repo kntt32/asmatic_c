@@ -169,6 +169,16 @@ static ParserMsg Type_parse_union(inout Parser* parser, in Generator* generator,
     return SUCCESS_PARSER_MSG;
 }
 
+static u32 Type_parse_get_ref_depth(inout Parser* parser) {
+    u32 ref_depth = 0;
+    
+    while(ParserMsg_is_success(Parser_parse_symbol(parser, "*"))) {
+        ref_depth ++;
+    }
+
+    return ref_depth;
+}
+
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type) {
     Parser parser_copy = *parser;
 
@@ -193,6 +203,8 @@ ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* ty
             (void)(NULL)
         );
     }
+
+    type->ref_depth += Type_parse_get_ref_depth(&parser_copy);
     
     *parser = parser_copy;
     
@@ -316,11 +328,56 @@ ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Typ
     return SUCCESS_PARSER_MSG;
 }
 
+void Storage_print(in Storage* self) {
+    printf("Storage { type: %d, place: { ", self->type);
+    switch(self->type) {
+        case Storage_Register:
+            printf("reg: ");
+            Register_print(self->place.reg);
+            break;
+        case Storage_Stack:
+            printf("base_offset: %d", self->place.base_offset);
+            break;
+        default:
+            printf("none");
+            break;
+    }
+    printf(" } }");
+
+    return;
+}
+
 ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data* data) {
     Parser parser_copy = *parser;
 
-    TODO();
+    PARSERMSG_UNWRAP(
+        Type_parse(&parser_copy, generator, &data->type),
+        (void)(NULL)
+    );
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_symbol(&parser_copy, "@"),
+        (void)(NULL)
+    );
+
+    PARSERMSG_UNWRAP(
+        Storage_parse(&parser_copy, generator, &data->type, &data->storage),
+        (void)(NULL)
+    );
+
+    *parser = parser_copy;
+
     return SUCCESS_PARSER_MSG;
+}
+
+void Data_print(in Data* self) {
+    printf("Data { type: ");
+    Type_print(&self->type);
+    printf(", storage: ");
+    Storage_print(&self->storage);
+    printf(" }");
+    
+    return;
 }
 
 void Data_free(Data self) {

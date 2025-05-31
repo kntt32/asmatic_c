@@ -86,6 +86,12 @@ void EnumMember_print(EnumMember* self);
 
 ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Type* type, out Storage* storage);
 
+void Storage_print(in Storage* self);
+
+ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data* data);
+
+void Data_print(in Data* self);
+
 void Data_free(Data self);
 
 void Variable_free(Variable self);

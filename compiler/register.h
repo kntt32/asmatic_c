@@ -24,3 +24,5 @@ typedef enum {
 
 ParserMsg Register_parse(Parser* parser, Register* ptr);
 
+void Register_print(in Register self);
+

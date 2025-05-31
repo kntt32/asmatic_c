@@ -36,3 +36,19 @@ ParserMsg Register_parse(Parser* parser, Register* restrict ptr) {
     return msg;
 }
 
+void Register_print(in Register self) {
+    for(u32 i=0; i<LEN(REGISTER_TABLE); i++) {
+        char* rtable_str = REGISTER_TABLE[i].str;
+        Register rtable_reg = REGISTER_TABLE[i].reg;
+
+        if(self == rtable_reg) {
+            printf("%s", rtable_str);
+            return;
+        }
+    }
+
+    PANIC("unknown value");
+    
+    return;
+}
+
