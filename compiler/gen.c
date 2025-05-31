@@ -4,6 +4,7 @@
 #include "parser.h"
 #include "register.h"
 
+Type DATA_VOID = {"void", Type_Normal, {}, 0, 1, 0};
 static Type EXPLICIT_NORMAL_TYPES[] = {
     {"void", Type_Normal, {}, 0, 1, 0},
 
@@ -600,6 +601,40 @@ optional Type* Generator_get_enum_types(in Generator* self, in char* name) {
 
 optional Type* Generator_get_union_types(in Generator* self, in char* name) {
     return Generator_get_type_helper(&self->union_types, name);
+}
+
+static SResult Generator_add_type_helper(inout Vec* types_vec, in Type* type) {
+    for(u32 i=0; i<Vec_len(types_vec); i++) {
+        Type* i_type = Vec_index(types_vec, i);
+
+        if(i_type->name == type->name) {
+            SResult result;
+            result.ok_flag = false;
+            snprintf(result.error, 256, "type \"%.10s\" has been already defined", type->name);
+            result.error[255] = '\0';
+            return result;
+        }
+    }
+
+    Vec_push(types_vec, type);
+
+    return SRESULT_OK;
+}
+
+SResult Generator_add_normal_type(out Generator* self, in Type* type) {
+    return Generator_add_type_helper(&self->normal_types, type);
+}
+
+SResult Generator_add_struct_type(out Generator* self, in Type* type) {
+    return Generator_add_type_helper(&self->struct_types, type);
+}
+
+SResult Generator_add_enum_type(out Generator* self, in Type* type) {
+    return Generator_add_type_helper(&self->enum_types, type);
+}
+
+SResult Generator_add_union_type(out Generator* self, in Type* type) {
+    return Generator_add_type_helper(&self->union_types, type);
 }
 
 u32 Generator_stack_push(inout Generator* self, in Type* type) {

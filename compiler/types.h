@@ -15,6 +15,13 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+typedef struct {
+    bool ok_flag;
+    char error[256];
+} SResult;
+
+extern SResult SRESULT_OK;
+
 #define in
 #define out
 #define inout
@@ -38,4 +45,11 @@ typedef unsigned long long u64;
 )
 #define MAX(x, y) (x > y)?(x):(y)
 #define BOOL_TO_STR(b) (b)?("true"):("false")
+#define SRESULT_IS_OK(r) (r.ok_flag)
+#define SRESULT_UNWRAP(r) {\
+    SResult result = r;\
+    if(!SRESULT_IS_OK(result)) {\
+        return result;\
+    }\
+}
 

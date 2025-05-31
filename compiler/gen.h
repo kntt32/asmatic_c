@@ -28,7 +28,7 @@ typedef struct {
 } EnumMember;
 
 typedef struct {
-    enum {Storage_Register, Storage_Stack, Storage_Data} type;
+    enum {Storage_Default, Storage_Register, Storage_Stack, Storage_Data} type;
     union {Register reg; i32 base_offset;} place;
 } Storage;
 
@@ -70,6 +70,8 @@ typedef struct {
     String code;
     String error;
 } Generator;
+
+extern Type TYPE_VOID;
 
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type);
 
@@ -118,6 +120,14 @@ optional Type* Generator_get_struct_types(in Generator* self, in char* name);
 optional Type* Generator_get_enum_types(in Generator* self, in char* name); 
 
 optional Type* Generator_get_union_types(in Generator* self, in char* name); 
+
+SResult Generator_add_normal_type(out Generator* self, in Type* type);
+
+SResult Generator_add_struct_type(out Generator* self, in Type* type);
+
+SResult Generator_add_enum_type(out Generator* self, in Type* type);
+
+SResult Generator_add_union_type(out Generator* self, in Type* type);
 
 u32 Generator_stack_push(inout Generator* self, in Type* type);
 
