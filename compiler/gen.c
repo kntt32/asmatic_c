@@ -4,11 +4,23 @@
 #include "parser.h"
 #include "register.h"
 
-static Type PRIMITIVE_TYPES[] = {
-    {"i32", Type_primitive, {}, 0, 4, 4},
-    {"u32", Type_primitive, {}, 0, 4, 4},
-    {"i64", Type_primitive, {}, 0, 8, 8},
-    {"u64", Type_primitive, {}, 0, 8, 8},
+static Type EXPLICIT_NORMAL_TYPES[] = {
+    {"void", Type_Normal, {}, 0, 1, 0},
+
+    {"char", Type_Normal, {}, 0, 1, 1},
+    {"bool", Type_Normal, {}, 0, 1, 1},
+
+    {"i8", Type_Normal, {}, 0, 1, 1},
+    {"u8", Type_Normal, {}, 0, 1, 1},
+    {"i16", Type_Normal, {}, 0, 2, 2},
+    {"u16", Type_Normal, {}, 0, 2, 2},
+    {"i32", Type_Normal, {}, 0, 4, 4},
+    {"u32", Type_Normal, {}, 0, 4, 4},
+    {"i64", Type_Normal, {}, 0, 8, 8},
+    {"u64", Type_Normal, {}, 0, 8, 8},
+
+    {"f32", Type_Normal, {}, 0, 4, 4},
+    {"f64", Type_Normal, {}, 0, 8, 8},
 };
 
 static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator, optional Type* (in *getter)(in Generator*, in char*), out Type* type) {
@@ -541,13 +553,13 @@ Generator Generator_new(optional in char* filename) {
     Generator generator;
     
     if(filename == NULL) {
-        filename = "anonymous.c";
+        filename = "anonymous";
     }
     strcpy(generator.filename, filename);
     
     generator.stack = 0;
 
-    generator.normal_types = Vec_from(PRIMITIVE_TYPES, LEN(PRIMITIVE_TYPES), sizeof(Type));
+    generator.normal_types = Vec_from(EXPLICIT_NORMAL_TYPES, LEN(EXPLICIT_NORMAL_TYPES), sizeof(Type));
     generator.struct_types = Vec_new(sizeof(Type));
     generator.enum_types = Vec_new(sizeof(Type));
     generator.union_types = Vec_new(sizeof(Type));

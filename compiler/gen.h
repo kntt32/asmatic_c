@@ -6,7 +6,7 @@
 
 typedef struct {
     char name[256];
-    enum {Type_primitive, Type_Struct, Type_Enum, Type_Union, Type_FnPtr} type;
+    enum {Type_Normal, Type_Struct, Type_Enum, Type_Union, Type_FnPtr} type;
     union {
         Vec members;// Vec<StructMember> struct/union
         Vec enums;  // Vec<EnumMember> enum
