@@ -49,6 +49,7 @@ typedef struct {
     char name[256];
     Vec arguments;// Vec<Variable>
     Data data;
+    bool is_static;
 } Function;
 
 typedef struct {
@@ -80,6 +81,8 @@ ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out 
 
 void StructMember_print(StructMember* self);
 
+void StructMember_free(StructMember self);
+
 ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out EnumMember* enum_member);
 
 void EnumMember_print(EnumMember* self);
@@ -99,6 +102,12 @@ ParserMsg Variable_parse(inout Parser* parser, in Generator* generator, out Vari
 void Variable_print(in Variable* self);
 
 void Variable_free(Variable self);
+
+ParserMsg Function_parse(inout Parser* parser, inout Generator* generator, out Function* function);
+
+void Function_print(Function* self);
+
+void Function_free(Function self);
 
 Generator Generator_new(optional in char* filename);
 

@@ -5,7 +5,10 @@
 #include "register.h"
 
 static Type PRIMITIVE_TYPES[] = {
-    {"i32", Type_primitive, {}, 0, 4, 4}
+    {"i32", Type_primitive, {}, 0, 4, 4},
+    {"u32", Type_primitive, {}, 0, 4, 4},
+    {"i64", Type_primitive, {}, 0, 8, 8},
+    {"u64", Type_primitive, {}, 0, 8, 8},
 };
 
 static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator, optional Type* (in *getter)(in Generator*, in char*), out Type* type) {
@@ -244,6 +247,10 @@ void Type_free(Type self) {
     switch(self.type) {
         case Type_Struct:
         case Type_Union:
+            for(u32 i=0; i<Vec_len(&self.property.members); i++) {
+                StructMember* member = Vec_index(&self.property.members, i);
+                StructMember_free(*member);
+            }
             Vec_free(self.property.members);
             break;
         case Type_Enum:
@@ -278,6 +285,12 @@ void StructMember_print(StructMember* self) {
     printf("StructMember { name: %s, type: ", self->name);
     Type_print(&self->type);
     printf(", offset: %u }", self->offset);
+    return;
+}
+
+void StructMember_free(StructMember self) {
+    Type_free(self.type);
+
     return;
 }
 
@@ -432,6 +445,96 @@ void Variable_print(in Variable* self) {
 
 void Variable_free(Variable self) {
    Data_free(self.data); 
+}
+
+static ParserMsg Function_parse_arguments(inout Parser* parser, inout Generator* generator, out Function* function) {
+    Parser parser_copy = *parser;
+
+    function->arguments = Vec_new(sizeof(Variable));
+
+    while(!Parser_is_empty(&parser_copy)) {
+        Variable arg;
+        PARSERMSG_UNWRAP(
+           Variable_parse(&parser_copy, generator, &arg),
+           (void)(NULL)
+        );
+        if(arg.data.storage.type == Storage_Data) {
+            ParserMsg msg = {parser_copy.line, "variable on .data is not allowed here"};
+            return msg;
+        }
+
+        Vec_push(&function->arguments, &arg);
+
+        ParserMsg symbol_msg = Parser_parse_symbol(&parser_copy, ",");
+        if(!ParserMsg_is_success(symbol_msg) && !Parser_is_empty(&parser_copy)) {
+            return symbol_msg;
+        }
+    }
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+ParserMsg Function_parse(inout Parser* parser, inout Generator* generator, out Function* function) {
+    // (static) $data $name ( $variable , ..)
+    Parser parser_copy = *parser;
+
+    function->is_static = ParserMsg_is_success(Parser_parse_keyword(parser, "static"));
+    
+    PARSERMSG_UNWRAP(
+        Data_parse(&parser_copy, generator, &function->data),
+        (void)(NULL)
+    );
+
+    if(function->data.storage.type == Storage_Data) {
+        ParserMsg msg = {parser_copy.line, "return data on .data is not allowed here"};
+        return msg;
+    }
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_ident(&parser_copy, function->name),
+        (void)(NULL)
+    );
+
+    Parser paren_parser;
+    PARSERMSG_UNWRAP(
+        Parser_parse_paren(&parser_copy, &paren_parser),
+        (void)(NULL)
+    );
+
+    PARSERMSG_UNWRAP(
+        Function_parse_arguments(&paren_parser, generator, function),
+        Function_free(*function)
+    );
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+static void Function_print_variable_print(void* ptr) {
+    Variable_print((Variable*)ptr);
+    return;
+}
+
+void Function_print(Function* self) {
+    printf("Function { name: %s, arguments: ", self->name);
+    Vec_print(&self->arguments, Function_print_variable_print);
+    printf(", data: ");
+    Data_print(&self->data);
+    printf(", is_static: %s }", BOOL_TO_STR(self->is_static));
+}
+
+void Function_free(Function self) {
+    for(u32 i=0; i<Vec_len(&self.arguments); i++) {
+        Variable* variable = (Variable*)Vec_index(&self.arguments, i);
+        Variable_free(*variable);
+    }
+    Vec_free(self.arguments);
+    Data_free(self.data);
+
+    return;
 }
 
 Generator Generator_new(optional in char* filename) {
