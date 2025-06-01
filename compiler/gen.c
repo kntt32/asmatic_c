@@ -550,6 +550,43 @@ void Function_free(Function self) {
     return;
 }
 
+VariableStack VariableStack_new(void) {
+    VariableStack variable_stack;
+    variable_stack.stack = Vec_new(sizeof(Variable));
+    
+    return variable_stack;
+}
+
+void VariableStack_free(VariableStack self) {
+    for(u32 i=0; i<Vec_len(&self.stack); i++) {
+        Variable* variable = Vec_index(&self.stack, i);
+        Variable_free(*variable);
+    }
+
+    Vec_free(self.stack);
+
+    return;
+}
+
+void VariableStack_push(inout VariableStack* self, in Variable* variable) {
+    Vec_push(&self->stack, variable);
+    return;
+}
+
+u32 VariableStack_get_depth(in VariableStack* self) {
+    return Vec_len(&self->stack);
+}
+
+void VariableStack_set_depth(inout VariableStack* self, u32 depth) {
+    while(depth < Vec_len(&self->stack)) {
+        Variable variable;
+        Vec_pop(&self->stack, &variable);
+        Variable_free(variable);
+    }
+
+    return;
+}
+
 Generator Generator_new(optional in char* filename) {
     Generator generator;
     
@@ -568,7 +605,6 @@ Generator Generator_new(optional in char* filename) {
     generator.functions = Vec_new(sizeof(Function));
 
     generator.global_variables = Vec_new(sizeof(Variable));
-    generator.auto_variables = Vec_new(sizeof(Variable));
 
     generator.code = String_new();
     generator.error = String_new();
@@ -652,7 +688,6 @@ void Generator_free(Generator self) {
     Vec_free(self.functions);
     
     Vec_free(self.global_variables);
-    Vec_free(self.auto_variables);
     
     String_free(self.code);
     String_free(self.error);

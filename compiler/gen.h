@@ -53,6 +53,10 @@ typedef struct {
 } Function;
 
 typedef struct {
+    Vec stack;// Vec<Variable>
+} VariableStack;
+
+typedef struct {
     char filename[256];
     
     u32 stack;
@@ -65,7 +69,6 @@ typedef struct {
     Vec functions;// Vec<Function>
 
     Vec global_variables;// Vec<Variable>
-    Vec auto_variables;// Vec<Variable>
 
     String code;
     String error;
@@ -110,6 +113,16 @@ ParserMsg Function_parse(inout Parser* parser, inout Generator* generator, out F
 void Function_print(Function* self);
 
 void Function_free(Function self);
+
+VariableStack VariableStack_new(void);
+
+void VariableStack_free(VariableStack self);
+
+void VariableStack_push(inout VariableStack* self, in Variable* variable);
+
+u32 VariableStack_get_depth(in VariableStack* self);
+
+void VariableStack_set_depth(inout VariableStack* self, u32 depth);
 
 Generator Generator_new(optional in char* filename);
 
