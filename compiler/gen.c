@@ -79,23 +79,29 @@ static ParserMsg Type_parse_literal(
 static ParserMsg Type_parse_literal_struct_inner_parser(inout Parser* parser, in Generator* generator, out Type* type) {
     Parser parser_copy = *parser;
 
-    type->property.members = Vec_new(sizeof(StructMember));
+    type->property.members = Vec_new(sizeof(Variable));
     u32 offset = 0;
     u32 align = 1;
 
     while(!Parser_is_empty(&parser_copy)) {
-        StructMember struct_member;
+        Variable struct_member;
         PARSERMSG_UNWRAP(
-            StructMember_parse(&parser_copy, generator, &struct_member),
-            Vec_free(type->property.members)
+            Variable_parse(&parser_copy, generator, &struct_member),
+            Type_free(*type)
         );
         PARSERMSG_UNWRAP(
             Parser_parse_symbol(&parser_copy, ";"),
-            Vec_free(type->property.members)
+            Type_free(*type)
         );
-        u32 member_align = struct_member.type.align;
-        struct_member.offset = ((offset + member_align - 1)/member_align)*member_align;
-        offset = struct_member.offset + struct_member.type.size;
+        if(struct_member.data.storage.type != Storage_Default) {
+            Type_free(*type);
+            ParserMsg msg = {parser_copy.line, "storage must be Storage_Default"};
+            return msg;
+        }
+        struct_member.data.storage.type = Storage_Stack;
+        u32 member_align = struct_member.data.type.align;
+        struct_member.data.storage.place.base_offset = ((offset + member_align - 1)/member_align)*member_align;
+        offset = struct_member.data.storage.place.base_offset + struct_member.data.type.size;
         align = MAX(align, member_align);
 
         Vec_push(&type->property.members, &struct_member);
@@ -228,7 +234,7 @@ ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* ty
 }
 
 static void Type_print_structmember(void* self) {
-    StructMember_print((StructMember*)self);
+    Variable_print((Variable*)self);
     return;
 }
 
@@ -261,8 +267,8 @@ void Type_free(Type self) {
         case Type_Struct:
         case Type_Union:
             for(u32 i=0; i<Vec_len(&self.property.members); i++) {
-                StructMember* member = Vec_index(&self.property.members, i);
-                StructMember_free(*member);
+                Variable* member = Vec_index(&self.property.members, i);
+                Variable_free(*member);
             }
             Vec_free(self.property.members);
             break;
@@ -272,37 +278,6 @@ void Type_free(Type self) {
         default:
             break;
     }
-
-    return;
-}
-
-ParserMsg StructMember_parse(inout Parser* parser, in Generator* generator, out StructMember* struct_member) {
-    // ex: i32 n
-    Parser parser_copy = *parser;
-    ParserMsg type_msg = Type_parse(&parser_copy, generator, &struct_member->type);
-    if(type_msg.msg[0] != '\0') {
-        return type_msg;
-    }
-
-    ParserMsg ident_msg = Parser_parse_ident(&parser_copy, struct_member->name);
-    if(ident_msg.msg[0] != '\0') {
-        return ident_msg;
-    }
-
-    *parser = parser_copy;
-
-    return SUCCESS_PARSER_MSG;
-}
-
-void StructMember_print(StructMember* self) {
-    printf("StructMember { name: %s, type: ", self->name);
-    Type_print(&self->type);
-    printf(", offset: %u }", self->offset);
-    return;
-}
-
-void StructMember_free(StructMember self) {
-    Type_free(self.type);
 
     return;
 }
@@ -381,15 +356,14 @@ ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data*
         (void)(NULL)
     );
 
-    PARSERMSG_UNWRAP(
-        Parser_parse_symbol(&parser_copy, "@"),
-        (void)(NULL)
-    );
-
-    PARSERMSG_UNWRAP(
-        Storage_parse(&parser_copy, generator, &data->type, &data->storage),
-        (void)(NULL)
-    );
+    if(ParserMsg_is_success(Parser_parse_symbol(&parser_copy, "@"))) {
+        PARSERMSG_UNWRAP(
+            Storage_parse(&parser_copy, generator, &data->type, &data->storage),
+            (void)(NULL)
+        );
+    }else {
+        data->storage.type = Storage_Default;
+    }
 
     *parser = parser_copy;
 
@@ -606,8 +580,10 @@ Generator Generator_new(optional in char* filename) {
 
     generator.global_variables = Vec_new(sizeof(Variable));
 
-    generator.code = String_new();
-    generator.error = String_new();
+    generator.code.text = String_new();
+    generator.code.data = String_new();
+
+    generator.errors = Vec_new(sizeof(Error));
 
     return generator;
 }
@@ -639,38 +615,58 @@ optional Type* Generator_get_union_types(in Generator* self, in char* name) {
     return Generator_get_type_helper(&self->union_types, name);
 }
 
-static SResult Generator_add_type_helper(inout Vec* types_vec, in Type* type) {
+static SResult Generator_add_type_helper(inout Vec* types_vec, Type type) {
     for(u32 i=0; i<Vec_len(types_vec); i++) {
         Type* i_type = Vec_index(types_vec, i);
 
-        if(i_type->name == type->name) {
+        if(strcmp(i_type->name, type.name) == 0) {
+            if(i_type->type == Type_Struct || i_type->type == Type_Union) {
+                if(Vec_len(&i_type->type.property.members) == 0) {
+                    continue;
+                }
+            }
             SResult result;
             result.ok_flag = false;
-            snprintf(result.error, 256, "type \"%.10s\" has been already defined", type->name);
+            snprintf(result.error, 256, "type \"%.10s\" has been already defined", type.name);
             result.error[255] = '\0';
             return result;
         }
     }
 
-    Vec_push(types_vec, type);
+    Vec_push(types_vec, &type);
 
     return SRESULT_OK;
 }
 
-SResult Generator_add_normal_type(out Generator* self, in Type* type) {
+SResult Generator_add_normal_type(out Generator* self, Type type) {
     return Generator_add_type_helper(&self->normal_types, type);
 }
 
-SResult Generator_add_struct_type(out Generator* self, in Type* type) {
+SResult Generator_add_struct_type(out Generator* self, Type type) {
     return Generator_add_type_helper(&self->struct_types, type);
 }
 
-SResult Generator_add_enum_type(out Generator* self, in Type* type) {
+SResult Generator_add_enum_type(out Generator* self, Type type) {
     return Generator_add_type_helper(&self->enum_types, type);
 }
 
-SResult Generator_add_union_type(out Generator* self, in Type* type) {
+SResult Generator_add_union_type(out Generator* self, Type type) {
     return Generator_add_type_helper(&self->union_types, type);
+}
+
+void Generator_asm_add_text(inout Generator* self, in char* s) {
+    String_append(&self->code.text, s);
+    return;
+}
+
+void Generator_asm_add_data(inout Generator* self, in char* s) {
+    String_append(&self->code.text, s);
+    return;
+}
+
+void Generator_add_error(inout Generator* self, in Error err) {
+    Vec_push(&self->errors, &err);
+    return;
 }
 
 u32 Generator_stack_push(inout Generator* self, in Type* type) {
@@ -689,8 +685,9 @@ void Generator_free(Generator self) {
     
     Vec_free(self.global_variables);
     
-    String_free(self.code);
-    String_free(self.error);
+    String_free(self.code.text);
+    String_free(self.code.data);
+    Vec_free(self.errors);
 
     return;
 }

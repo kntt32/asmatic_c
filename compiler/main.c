@@ -4,7 +4,7 @@
 
 int main() {
     Generator gen = Generator_new(NULL);
-    Parser parser = Parser_new("const static i32@data a[5]");
+    Parser parser = Parser_new("const static struct {i32 a; i32 b;} @data a[5]");
     Variable variable;
     ParserMsg msg = Variable_parse(&parser, &gen, &variable);
     if(ParserMsg_is_success(msg)) {
