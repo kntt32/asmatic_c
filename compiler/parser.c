@@ -108,6 +108,20 @@ bool Parser_is_empty(in Parser* self) {
     return 0 == self->len;
 }
 
+void Parser_skip_to_semicolon(inout Parser* self) {
+    while(!ParserMsg_is_success(Parser_parse_symbol(self, ";"))) {
+        Parser_skip(self);
+    }
+
+    return;
+}
+
+bool Parser_start_with(inout Parser* self, in char* keyword) {
+    Parser self_copy = *self;
+
+    return ParserMsg_is_success(Parser_parse_keyword(&self_copy, keyword));
+}
+
 ParserMsg Parser_parse_ident(inout Parser* self, out char token[256]) {
     Parser self_copy = *self;
     Parser_run_for_gap(&self_copy, token);

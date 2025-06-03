@@ -19,6 +19,10 @@ Parser Parser_new(in char* src);
 
 bool Parser_is_empty(in Parser* self);
 
+bool Parser_start_with(inout Parser* self, in char* keyword);
+
+void Parser_skip_to_semicolon(inout Parser* self);
+
 ParserMsg Parser_parse_ident(inout Parser* self, out char token[256]);
 
 ParserMsg Parser_parse_keyword(inout Parser* self, in char* keyword);

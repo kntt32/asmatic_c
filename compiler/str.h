@@ -15,3 +15,5 @@ void String_append(String* self, char* src);
 
 char* String_as_ptr(String* self);
 
+void String_print(in String* self);
+

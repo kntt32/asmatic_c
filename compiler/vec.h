@@ -13,6 +13,10 @@ Vec Vec_new(u32 size);
 
 void Vec_free(Vec vec);
 
+void Vec_free_all(Vec self, optional in void (*destructor)(void*));
+
+Vec Vec_clone(in Vec* self, optional in void (*clone)(void* dst, void* src));
+
 void* Vec_index(Vec* self, u32 index);
 
 void* Vec_as_ptr(Vec* self);

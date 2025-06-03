@@ -30,7 +30,15 @@ void String_append(String* self, char* src) {
     return;
 }
 
-
+void String_print(in String* self) {
+   for(u32 i=0; i<Vec_len(&self->vec); i++) {
+        char* c_ptr = Vec_index(&self->vec, i);
+        char c = *c_ptr;
+        if(c != '\0') {
+            printf("%c", c);
+        }
+   }
+}
 
 
 

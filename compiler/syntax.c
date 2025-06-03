@@ -6,61 +6,53 @@
 #include "gen.h"
 #include "syntax.h"
 
-bool SyntaxResult_is_success(SyntaxResult result) {
-    return result.success_flag;
+#define SYNTAX_ADD_ERROR(parsermsg, generator, catch_proc) {\
+    ParserMsg msg_copy = parsermsg;\
+    if(!ParserMsg_is_success(msg_copy)) {\
+        Error error;\
+        error.line = msg_copy.line;\
+        strcpy(error.msg, msg_copy.msg);\
+        Generator_add_error(generator, error);\
+        catch_proc;\
+        return SyntaxStatus_Error;\
+    }\
 }
 
-static bool Syntax_add_error(ParserMsg msg, inout Generator* generator) {
-    if(ParserMsg_is_success(msg)) {
-        return false;
-    }
-
-    Error error;
-    error.line = msg.line;
-    strcpy(error.msg, msg.msg);
-
-    Generator_add_error(generator, error);
-
-    return true;
-}
-
-static void Syntax_build_typedef(inout Parser* parser, inout Generator* generator) {
+static SyntaxStatus Syntax_build_typedef(inout Parser* parser, inout Generator* generator) {
     // typedef/ $type $ident;
     Type type;
-    if(Syntax_add_error(Type_parse(parser, generator, &type), generator)) {
-        return;
+
+    if(!ParserMsg_is_success(Parser_parse_keyword(parser, "typedef"))) {
+        return SyntaxStatus_None;
     }
 
-    if(Syntax_add_error(Parser_parse_ident(parser, type.name), generator)) {
-        Type_free(type);
-        return;
-    }
-
-    if(Syntax_add_error(Parser_parse_symbol(parser, ";"), generator)) {
-        Type_free(type);
-        return;
-    }
+    SYNTAX_ADD_ERROR(Type_parse(parser, generator, &type), generator, Parser_skip_to_semicolon(parser));
+    SYNTAX_ADD_ERROR(Parser_parse_ident(parser, type.name), generator, Parser_skip_to_semicolon(parser));
+    SYNTAX_ADD_ERROR(Parser_parse_symbol(parser, ";"), generator, (void)(NULL));
 
     Generator_add_normal_type(generator, type);
 
-    return;
+    return SyntaxStatus_Success;
 }
 
-static void Syntax_build_type(inout Parser* parser, inout Generator* generator) {
-    Type type;
-    if(Syntax_add_error(Type_parse(parser, generator, &type), generator)) {
-        return;
+static SyntaxStatus Syntax_build_type_declare(inout Parser* parser, inout Generator* generator) {
+    if(!(Parser_start_with(parser, "struct") || Parser_start_with(parser, "enum") || Parser_start_with(parser, "union"))) {
+        return SyntaxStatus_None;
     }
 
-    if(Syntax_add_error(Parser_parse_symbol(parser, ";"), generator)) {
-        Type_free(type);
-        return;
-    }
+    Type type;
+    SYNTAX_ADD_ERROR(
+        Type_parse(parser, generator, &type),
+        generator,
+        Parser_skip_to_semicolon(parser)
+    );
+    SYNTAX_ADD_ERROR(
+        Parser_parse_symbol(parser, ";"),
+        generator,
+        (void)NULL
+    );
 
     switch(type.type) {
-        case Type_Normal:
-            Generator_add_normal_type(generator, type);
-            break;
         case Type_Struct:
             Generator_add_struct_type(generator, type);
             break;
@@ -70,28 +62,34 @@ static void Syntax_build_type(inout Parser* parser, inout Generator* generator) 
         case Type_Union:
             Generator_add_union_type(generator, type);
             break;
-        case Type_FnPtr:
-            TODO();
+        default:
+            PANIC("unexpected type");
             break;
     }
 
-    return;
+    return SyntaxStatus_Success;
 }
 
 void Syntax_build(Parser parser, inout Generator* generator) {
-    while(!Parser_is_empty(&parser)) {
-        Parser parser_copy = parser;;
+    SyntaxStatus (*BUILDERS[])(inout Parser*, inout Generator*) = {Syntax_build_typedef, Syntax_build_type_declare};
+    u32 builders_len = LEN(BUILDERS);
 
-        if(ParserMsg_is_success(Parser_parse_keyword(&parser, "typedef"))) {
-            Syntax_build_typedef(&parser, generator);
-        }else if(ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "struct"))
-                || ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "enum"))
-                || ParserMsg_is_success(Parser_parse_keyword(&parser_copy, "union"))) {
-            Syntax_build_type(&parser, generator);
-        }else {
+    while(!Parser_is_empty(&parser)) {
+        bool unknown_flag = true;
+        
+        for(u32 i=0; i<builders_len; i++) {
+            SyntaxStatus status = BUILDERS[i](&parser, generator);
+            if(status == SyntaxStatus_Success || status == SyntaxStatus_Error) {
+                unknown_flag = false;
+                break;
+            }
+        }
+
+        if(unknown_flag) {
             Error error = {parser.line, "unknown expression"};
             Generator_add_error(generator, error);
-            TODO();
+
+            Parser_skip_to_semicolon(&parser);
         }
     }
 

@@ -13,6 +13,37 @@ void Vec_free(Vec vec) {
     free(vec.ptr);
 }
 
+void Vec_free_all(Vec self, optional in void (*destructor)(void*)) {
+    if(destructor != NULL) {
+        for(u32 i=0; i<self.len; i++) {
+            destructor(Vec_index(&self, i));
+        }
+    }
+
+    Vec_free(self);
+
+    return;
+}
+
+Vec Vec_clone(in Vec* self, optional in void (*clone)(void* dst, void* src)) {
+    Vec vec;
+    vec.ptr = malloc(self->capacity * self->size);
+    vec.size = self->size;
+    vec.len = self->len;
+    vec.capacity = self->capacity;
+
+    if(clone == NULL) {
+        memcpy(vec.ptr, self->ptr, vec.len * vec.size);
+    }else {
+        for(u32 i=0; i<vec.len; i++) {
+            void* ptr = vec.ptr + vec.size * i;
+            clone(ptr, Vec_index(self, i));
+        }
+    }
+
+    return vec;
+}
+
 void* Vec_index(Vec* self, u32 index) {
     if(self->len <= index) {
         PANIC("out of range");

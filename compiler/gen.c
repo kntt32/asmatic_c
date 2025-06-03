@@ -29,7 +29,7 @@ static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator
 
     char type_name[256] = "";
     
-    if(Parser_parse_ident(&parser_copy, type_name).msg[0] != '\0') {
+    if(!ParserMsg_is_success(Parser_parse_ident(&parser_copy, type_name))) {
         ParserMsg msg = {parser_copy.line, "expected type"};
         return msg;
     }
@@ -41,7 +41,7 @@ static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator
     }
 
     *parser = parser_copy;
-    *type = *type_ptr;
+    *type = Type_clone(type_ptr);
 
     return SUCCESS_PARSER_MSG;
 }
@@ -101,7 +101,11 @@ static ParserMsg Type_parse_literal_struct_inner_parser(inout Parser* parser, in
         struct_member.data.storage.type = Storage_Stack;
         u32 member_align = struct_member.data.type.align;
         struct_member.data.storage.place.base_offset = ((offset + member_align - 1)/member_align)*member_align;
-        offset = struct_member.data.storage.place.base_offset + struct_member.data.type.size;
+        if(struct_member.len < 0) {
+            offset = struct_member.data.storage.place.base_offset + struct_member.data.type.size;
+        }else {
+            offset = struct_member.data.storage.place.base_offset + struct_member.data.type.size * struct_member.len;
+        }
         align = MAX(align, member_align);
 
         Vec_push(&type->property.members, &struct_member);
@@ -145,7 +149,7 @@ static ParserMsg Type_parse_literal_union_inner_parser(inout Parser* parser, in 
 }
 
 static ParserMsg Type_parse_struct(inout Parser* parser, in Generator* generator, out Type* type) {
-    if(!Type_parse_helper(parser, generator, Generator_get_struct_types, type).msg[0] == '\0') {
+    if(!ParserMsg_is_success(Type_parse_helper(parser, generator, Generator_get_struct_types, type))) {
         PARSERMSG_UNWRAP(
             Type_parse_literal(parser, generator, Type_parse_literal_struct_inner_parser, type),
             (void)(NULL)
@@ -260,6 +264,39 @@ void Type_print(Type* self) {
     printf(", ref_depth: %d, align: %u, size: %u }", self->ref_depth, self->align, self->size);
 
     return;
+}
+
+static void Type_clone_variable(out void* dst, in void* src) {
+    Variable* dst_type = dst;
+    Variable* src_type = src;
+
+    *dst_type = Variable_clone(src_type);
+
+    return;
+}
+
+Type Type_clone(in Type* self) {
+    Type type;
+
+    strcpy(type.name, self->name);
+    type.type = self->type;
+    switch(type.type) {
+        case Type_Struct:
+        case Type_Union:
+            type.property.members = Vec_clone(&self->property.members, Type_clone_variable);
+            break;
+        case Type_Enum:
+            type.property.enums = Vec_clone(&self->property.enums, NULL);
+            break;
+        default:
+            break;
+    }
+
+    type.ref_depth = self->ref_depth;
+    type.align = self->align;
+    type.size = self->size;
+
+    return type;
 }
 
 void Type_free(Type self) {
@@ -380,6 +417,15 @@ void Data_print(in Data* self) {
     return;
 }
 
+Data Data_clone(in Data* self) {
+    Data data;
+
+    data.type = Type_clone(&self->type);
+    data.storage = self->storage;
+
+    return data;
+}
+
 void Data_free(Data self) {
     Type_free(self.type);
 }
@@ -428,6 +474,18 @@ void Variable_print(in Variable* self) {
     printf(", const_flag: %s, static_flag: %s, len: %d }", BOOL_TO_STR(self->const_flag), BOOL_TO_STR(self->static_flag), self->len);
 
     return;
+}
+
+Variable Variable_clone(in Variable* self) {
+    Variable variable;
+    
+    strcpy(variable.name, self->name);
+    variable.data = Data_clone(&self->data);
+    variable.const_flag = self->const_flag;
+    variable.static_flag = self->static_flag;
+    variable.len = self->len;
+
+    return variable;
 }
 
 void Variable_free(Variable self) {
@@ -513,6 +571,26 @@ void Function_print(Function* self) {
     printf(", is_static: %s }", BOOL_TO_STR(self->is_static));
 }
 
+static void Function_clone_vec_variable(out void* dest, in void* src) {
+    Variable* dest_ptr = dest;
+    Variable* src_ptr = src;
+
+    *dest_ptr = Variable_clone(src_ptr);
+
+    return;
+}
+
+Function Function_clone(in Function* self) {
+    Function function;
+    
+    strcpy(function.name, self->name);
+    function.arguments = Vec_clone(&self->arguments, Function_clone_vec_variable);
+    function.data = Data_clone(&self->data);
+    function.is_static = self->is_static;
+
+    return function;
+}
+
 void Function_free(Function self) {
     for(u32 i=0; i<Vec_len(&self.arguments); i++) {
         Variable* variable = (Variable*)Vec_index(&self.arguments, i);
@@ -561,6 +639,10 @@ void VariableStack_set_depth(inout VariableStack* self, u32 depth) {
     return;
 }
 
+void Error_print(in Error* self) {
+    printf("Error { line: %u, msg: %s }", self->line, self->msg);
+}
+
 Generator Generator_new(optional in char* filename) {
     Generator generator;
     
@@ -586,6 +668,46 @@ Generator Generator_new(optional in char* filename) {
     generator.errors = Vec_new(sizeof(Error));
 
     return generator;
+}
+
+static void Generator_print_type(void* ptr) {
+    Type_print(ptr);
+}
+
+static void Generator_print_variable(void* ptr) {
+    Variable_print(ptr);
+}
+
+static void Generator_print_function(void* ptr) {
+    Function_print(ptr);
+}
+
+static void Generator_print_error(void* ptr) {
+    Error_print(ptr);
+}
+
+void Generator_print(in Generator* self) {
+    printf("Generator { filename: %s, normal_types: ", self->filename);
+    Vec_print(&self->normal_types, Generator_print_type);
+    printf(", struct_types: ");
+    Vec_print(&self->struct_types, Generator_print_type);
+    printf(", enum_types: ");
+    Vec_print(&self->enum_types, Generator_print_type);
+    printf(", union_types: ");
+    Vec_print(&self->union_types, Generator_print_type);
+    printf(", functions: ");
+    Vec_print(&self->functions, Generator_print_function);
+    printf(", global_variables: ");
+    Vec_print(&self->global_variables, Generator_print_variable);
+    printf(", code: { text: ");
+    String_print(&self->code.text);
+    printf(", data: ");
+    String_print(&self->code.data);
+    printf(" }, errors: ");
+    Vec_print(&self->errors, Generator_print_error);
+    printf(" }");
+
+    return;
 }
 
 static optional Type* Generator_get_type_helper(in Vec* types, in char* name) {
@@ -621,7 +743,7 @@ static SResult Generator_add_type_helper(inout Vec* types_vec, Type type) {
 
         if(strcmp(i_type->name, type.name) == 0) {
             if(i_type->type == Type_Struct || i_type->type == Type_Union) {
-                if(Vec_len(&i_type->type.property.members) == 0) {
+                if(Vec_len(&i_type->property.members) == 0) {
                     continue;
                 }
             }

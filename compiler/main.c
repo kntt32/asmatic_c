@@ -1,8 +1,10 @@
 #include <stdio.h>
 #include "parser.h"
 #include "gen.h"
+#include "syntax.h"
 
 int main() {
+    
     Generator gen = Generator_new(NULL);
     Parser parser = Parser_new("const static struct {i32 a; i32 b;} @data a[5]");
     Variable variable;
@@ -27,6 +29,24 @@ int main() {
     }
 
     Generator_free(gen);
+
+    printf("AAAAAAAAAAAAAAAAAAAAAA\n\n\n");
+
+    Generator gen2 = Generator_new(NULL);
+    Parser parser3 = Parser_new("\
+        typedef struct { u32 line; char msg[256]; } ParserMsg;\n\
+        struct MyStruct {\n\
+            bool flag;\n\
+            ParserMsg msg;\n\
+        };\n\
+        typedef struct MyStruct MyS;\n\
+    ");
+
+    Syntax_build(parser3, &gen2);
+    Generator_print(&gen2);
+    Generator_free(gen2);
+
+    printf("\n\n");
 
     return 0;
 }

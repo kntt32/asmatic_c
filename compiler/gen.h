@@ -81,6 +81,7 @@ extern Type TYPE_VOID;
 
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type);
 void Type_print(Type* self);
+Type Type_clone(in Type* self);
 void Type_free(Type self);
 
 ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out EnumMember* enum_member);
@@ -91,14 +92,17 @@ void Storage_print(in Storage* self);
 
 ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data* data);
 void Data_print(in Data* self);
+Data Data_clone(in Data* self);
 void Data_free(Data self);
 
 ParserMsg Variable_parse(inout Parser* parser, in Generator* generator, out Variable* variable);
 void Variable_print(in Variable* self);
+Variable Variable_clone(in Variable* self);
 void Variable_free(Variable self);
 
 ParserMsg Function_parse(inout Parser* parser, inout Generator* generator, out Function* function);
 void Function_print(Function* self);
+Function Function_clone(in Function* self);
 void Function_free(Function self);
 
 VariableStack VariableStack_new(void);
@@ -108,6 +112,7 @@ u32 VariableStack_get_depth(in VariableStack* self);
 void VariableStack_set_depth(inout VariableStack* self, u32 depth);
 
 Generator Generator_new(optional in char* filename);
+void Generator_print(in Generator* self);
 optional Type* Generator_get_normal_types(in Generator* self, in char* name);
 optional Type* Generator_get_struct_types(in Generator* self, in char* name); 
 optional Type* Generator_get_enum_types(in Generator* self, in char* name); 
