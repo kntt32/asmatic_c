@@ -223,6 +223,21 @@ ParserMsg Parser_parse_number(inout Parser* self, out i64* value) {
     return SUCCESS_PARSER_MSG;
 }
 
+ParserMsg Parser_parse_number_raw(inout Parser* self, out char value[256]) {
+    Parser self_copy = *self;
+
+    Parser_run_for_gap(&self_copy, value);
+
+    if(!Util_is_number(value)) {
+        ParserMsg msg = {self_copy.line, "expected number literal"};
+        return msg;
+    }
+
+    *self = self_copy;
+    
+    return SUCCESS_PARSER_MSG;
+}
+
 ParserMsg Parser_parse_block(inout Parser* self, out Parser* parser) {
     return Parser_parse_block_helper(self, parser, "{", "}");
 }

@@ -155,7 +155,7 @@ static ParserMsg Type_parse_struct(inout Parser* parser, in Generator* generator
             (void)(NULL)
         );
         type->type = Type_Struct;
-        type->value_type = ValueType_Struct;
+        type->value_type = ValueType_Default;
     }
     
     return SUCCESS_PARSER_MSG;

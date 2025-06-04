@@ -1,7 +1,7 @@
 CC := gcc
 CFLAGS := -Wall -Wextra -g
 
-compiler.elf: main.o types.o vec.o str.o parser.o util.o register.o gen.o syntax.o
+compiler.elf: main.o types.o vec.o str.o parser.o util.o register.o gen.o syntax.o ast.o
 	$(CC) $(CFLAGS) $^ -o $@
 
 main.o: main.c types.h parser.h gen.h syntax.h
@@ -13,6 +13,7 @@ util.o: util.c util.h types.h
 register.o: register.c register.h types.h
 gen.o: gen.c gen.h types.h parser.h register.h
 syntax.o: syntax.c types.h parser.h syntax.h
+ast.o: ast.c types.h parser.h ast.h
 
 types.h:
 parser.h: types.h
@@ -22,6 +23,7 @@ util.h: types.h
 register.h: types.h parser.h
 gen.h: register.h types.h vec.h str.h
 syntax.h: types.h gen.h
+ast.h: types.h gen.h
 
 %.o: %.c
 	$(CC) $(CFLAGS) -c $< -o $@

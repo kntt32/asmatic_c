@@ -52,4 +52,9 @@ extern SResult SRESULT_OK;
         return result;\
     }\
 }
+#define UNWRAP_NULL(ptr) {\
+    if(ptr == NULL) {\
+        PANIC("nullptr was unwrapped");\
+    }\
+}
 

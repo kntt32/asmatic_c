@@ -8,8 +8,7 @@ typedef enum {
     ValueType_Default,
     ValueType_String,
     ValueType_SignedInt,
-    ValueType_UnsignedInt,
-    ValueType_Struct
+    ValueType_UnsignedInt
 } ValueType;
 
 typedef struct {
