@@ -70,6 +70,91 @@ static SyntaxStatus Syntax_build_type_declare(inout Parser* parser, inout Genera
     return SyntaxStatus_Success;
 }
 
+typedef struct {
+    ValueType type;
+    union {
+        String string;
+        i64 signedint;
+        u64 unsignedint;
+        Vec structvalue; // Vec<ImmValue>
+    } body;
+} ImmValue;
+
+typedef struct {
+    SyntaxStatus status;
+    ImmValue imm_value;
+} ExprResult;
+
+static ExprResult EXPRRESULT_NONE = {SyntaxStatus_None, {ValueType_Default, {}}};
+/*
+static bool Syntax_build_expr_addsubterm_splitparser(inout Parser* parser) {
+    return Parser_start_with_symbol(parser, "+") || Parser_start_with_symbol(parser, "-");
+}
+
+static bool Syntax_build_expr_addsub_term(
+    inout Parser* parser,
+    inout Generator* generator,
+    u32 index,
+    out Parser* term_parser
+) {
+    Parser_split(parser, Syntax_build_expr_addsubterm_splitparser, term_parser);
+
+    return true;
+}
+
+static ExprResult Syntax_build_expr_addsub(Parser parser, inout Generator* generator, in Data* expected_data) {
+    Vec terms = Vec_new(sizeof(Parser));// Vec<Parser>
+    u32 index = 0;
+
+    while(!Parser_is_empty(&parser)) {
+        Parser term_parser;
+        Syntax_build_expr_addsub_term(&parser, generator, index, &term_parser);
+        Vec_push(&term_parser);
+        index ++;
+    }
+
+    if(index == 0 || (index == 1 && Parser_is_empty(Vec_index(&term, 0)))) {
+        ExprResult result = {SyntaxStatus_None, {ValueType_Default, {}}};
+        Vec_free(&terms);
+        return result;
+    }
+
+    ExprResult result;
+    result.status = SyntaxStatus_Success;
+    result.imm_value.type = expected_data->type.value_type;
+    switch(result.imm_value.type) {
+        case ValueType_SignedInt:
+            result.imm_value.body.signedint = 0;
+            break;
+        case ValueType_UnsignedInt:
+            result.imm_value.body.unsignedint = 0;
+            break;
+        default:
+            Error error = {parser.line, "expected number"};
+            Generator_add_error(generator, error);
+            result.status = SyntaxStatus_Error;
+            Vec_free(&terms);
+            return result;
+    }
+
+    for(u32 i=0; i<index; i++) {
+        Parser* term_parser = Vec_index(&terms, i);
+        
+        Parser_parse_symbol(term_parser, "+");
+        bool minus_flag = ParserMsg_is_success(term_parser, "-")
+        ExprResult branch_result = Syntax_build_expr(Vec_index(&terms, i), generator, expected_data);
+        switch(result.imm_value.type) {
+            case ValueType_SignedInt:
+                result.imm_value.body.signedint += (minus_flag)?(-1):(1) * 
+        }
+    }
+}
+
+static ExprResult Syntax_build_expr(inout Parser* parser, inout Generator* generator, in Data* expected_data) {
+    TODO();
+    return EXPRRESULT_NONE;
+}*/
+
 void Syntax_build(Parser parser, inout Generator* generator) {
     SyntaxStatus (*BUILDERS[])(inout Parser*, inout Generator*) = {Syntax_build_typedef, Syntax_build_type_declare};
     u32 builders_len = LEN(BUILDERS);

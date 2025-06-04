@@ -4,24 +4,24 @@
 #include "parser.h"
 #include "register.h"
 
-Type DATA_VOID = {"void", Type_Normal, {}, 0, 1, 0};
+Type DATA_VOID = {"void", Type_Normal, {}, 0, 1, 0, ValueType_Default};
 static Type EXPLICIT_NORMAL_TYPES[] = {
-    {"void", Type_Normal, {}, 0, 1, 0},
+    {"void", Type_Normal, {}, 0, 1, 0, ValueType_Default},
 
-    {"char", Type_Normal, {}, 0, 1, 1},
-    {"bool", Type_Normal, {}, 0, 1, 1},
+    {"char", Type_Normal, {}, 0, 1, 1, ValueType_UnsignedInt},
+    {"bool", Type_Normal, {}, 0, 1, 1, ValueType_UnsignedInt},
 
-    {"i8", Type_Normal, {}, 0, 1, 1},
-    {"u8", Type_Normal, {}, 0, 1, 1},
-    {"i16", Type_Normal, {}, 0, 2, 2},
-    {"u16", Type_Normal, {}, 0, 2, 2},
-    {"i32", Type_Normal, {}, 0, 4, 4},
-    {"u32", Type_Normal, {}, 0, 4, 4},
-    {"i64", Type_Normal, {}, 0, 8, 8},
-    {"u64", Type_Normal, {}, 0, 8, 8},
+    {"i8", Type_Normal, {}, 0, 1, 1, ValueType_SignedInt},
+    {"u8", Type_Normal, {}, 0, 1, 1, ValueType_UnsignedInt},
+    {"i16", Type_Normal, {}, 0, 2, 2, ValueType_SignedInt},
+    {"u16", Type_Normal, {}, 0, 2, 2, ValueType_UnsignedInt},
+    {"i32", Type_Normal, {}, 0, 4, 4, ValueType_SignedInt},
+    {"u32", Type_Normal, {}, 0, 4, 4, ValueType_UnsignedInt},
+    {"i64", Type_Normal, {}, 0, 8, 8, ValueType_SignedInt},
+    {"u64", Type_Normal, {}, 0, 8, 8, ValueType_UnsignedInt},
 
-    {"f32", Type_Normal, {}, 0, 4, 4},
-    {"f64", Type_Normal, {}, 0, 8, 8},
+    {"f32", Type_Normal, {}, 0, 4, 4, ValueType_Default},
+    {"f64", Type_Normal, {}, 0, 8, 8, ValueType_Default},
 };
 
 static ParserMsg Type_parse_helper(inout Parser* parser, in Generator* generator, optional Type* (in *getter)(in Generator*, in char*), out Type* type) {
@@ -155,8 +155,9 @@ static ParserMsg Type_parse_struct(inout Parser* parser, in Generator* generator
             (void)(NULL)
         );
         type->type = Type_Struct;
+        type->value_type = ValueType_Struct;
     }
-
+    
     return SUCCESS_PARSER_MSG;
 }
 
@@ -167,6 +168,7 @@ static ParserMsg Type_parse_enum(inout Parser* parser, in Generator* generator, 
             (void)(NULL)
         );
         type->type = Type_Enum;
+        type->value_type = ValueType_UnsignedInt;
 
         i32 value = 0;
         for(u32 i=0; i<Vec_len(&type->property.enums); i++) {
@@ -190,6 +192,7 @@ static ParserMsg Type_parse_union(inout Parser* parser, in Generator* generator,
             (void)(NULL)
         );
         type->type = Type_Union;
+        type->value_type = ValueType_Default;
     }
    
     return SUCCESS_PARSER_MSG;

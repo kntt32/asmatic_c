@@ -4,6 +4,14 @@
 #include "str.h"
 #include "register.h"
 
+typedef enum {
+    ValueType_Default,
+    ValueType_String,
+    ValueType_SignedInt,
+    ValueType_UnsignedInt,
+    ValueType_Struct
+} ValueType;
+
 typedef struct {
     char name[256];
     enum {Type_Normal, Type_Struct, Type_Enum, Type_Union, Type_FnPtr} type;
@@ -14,6 +22,7 @@ typedef struct {
     u32 ref_depth;
     u32 align;
     u32 size;
+    ValueType value_type;
 } Type;
 
 typedef struct {

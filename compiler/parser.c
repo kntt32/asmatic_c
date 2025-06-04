@@ -122,6 +122,38 @@ bool Parser_start_with(inout Parser* self, in char* keyword) {
     return ParserMsg_is_success(Parser_parse_keyword(&self_copy, keyword));
 }
 
+bool Parser_start_with_symbol(inout Parser* self, in char* symbol) {
+    Parser self_copy = *self;
+
+    return ParserMsg_is_success(Parser_parse_symbol(&self_copy, symbol));
+}
+
+ParserMsg Parser_split(inout Parser* self, in bool (*split_parser)(inout Parser*), out Parser* parser) {
+    Parser self_copy = *self;
+
+    if(Parser_is_empty(self)) {
+        ParserMsg msg = {self->line, "expected token"};
+        return msg;
+    }
+
+    *parser = *self;
+    while(!split_parser(&self_copy)) {
+        if(!Parser_skip(&self_copy)) {
+            if(Parser_is_empty(&self_copy)) {
+                break;
+            }else {
+                ParserMsg msg = {self_copy.line, "unknown token"};
+                return msg;
+            }
+        }
+        parser->len = self->len - self_copy.len;
+    }
+
+    *self = self_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
 ParserMsg Parser_parse_ident(inout Parser* self, out char token[256]) {
     Parser self_copy = *self;
     Parser_run_for_gap(&self_copy, token);
