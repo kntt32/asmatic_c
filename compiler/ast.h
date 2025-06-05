@@ -20,10 +20,30 @@ struct AstNode;
 struct AstNode {
     enum { AstNode_Operator, AstNode_Imm } type;
     union {
-        struct { Operator operator; struct AstNode* left; struct AstNode* right; } operator;
+        struct { Operator operator; optional struct AstNode* left; optional struct AstNode* right; } operator;
         ImmValue imm;
     } body;
 };
 
 typedef struct AstNode AstNode;
+
+typedef struct {
+    AstNode* node;
+} AstTree;
+
+void ImmValue_print(in ImmValue* self);
+
+void ImmValue_free(ImmValue self);
+
+void Operator_print(in Operator* self);
+
+void AstNode_print(in AstNode* self);
+
+void AstNode_free(AstNode self);
+
+void AstTree_print(in AstTree* self);
+
+void AstTree_free(AstTree self);
+
+ParserMsg AstTree_parse(Parser parser, out AstTree* ptr);
 

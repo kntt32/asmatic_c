@@ -2,6 +2,7 @@
 #include "parser.h"
 #include "gen.h"
 #include "syntax.h"
+#include "ast.h"
 
 int main() {
     
@@ -45,6 +46,18 @@ int main() {
     Syntax_build(parser3, &gen2);
     Generator_print(&gen2);
     Generator_free(gen2);
+
+    printf("\n\n");
+
+    printf("BBBBBBBBBBBBBBBBBBBBB\n\n");
+
+    AstTree tree;
+    Parser parser4 = Parser_new("2 + 3 * 5 / 7 - 8");
+    if(ParserMsg_is_success(AstTree_parse(parser4, &tree))) {
+        AstTree_print(&tree);
+    }else {
+        printf("failed");
+    }
 
     printf("\n\n");
 

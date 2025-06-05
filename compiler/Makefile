@@ -4,7 +4,7 @@ CFLAGS := -Wall -Wextra -g
 compiler.elf: main.o types.o vec.o str.o parser.o util.o register.o gen.o syntax.o ast.o
 	$(CC) $(CFLAGS) $^ -o $@
 
-main.o: main.c types.h parser.h gen.h syntax.h
+main.o: main.c types.h parser.h gen.h syntax.h ast.h
 types.c: types.h
 parser.o: parser.c parser.h util.h
 vec.o: vec.c vec.h types.h
