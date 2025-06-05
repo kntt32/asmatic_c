@@ -7,12 +7,14 @@
 #include "parser.h"
 
 static Operator OPERATORS[] = {
+    {"++", true, false, 16},
+    {"++", false, true, 15},
+    {"sizeof", false, true, 15},
+    {"%", true, true, 13},
+    {"/", true, true, 13},
+    {"*", true, true, 13},
     {"+", true, true, 12},
     {"-", true, true, 12},
-    {"*", true, true, 13},
-    {"/", true, true, 13},
-    {"%", true, true, 13},
-    {"++", true, false, 16}
 };
 
 void ImmValue_print(in ImmValue* self) {
@@ -79,11 +81,13 @@ static AstNode** AstNode_get_leaf(in AstNode** self_ptr) {
 
     switch(self->type) {
         case AstNode_Operator:
-            Operator* operator = &self->body.operator.operator;
-            if(operator->right_arg && self->body.operator.right == NULL) {
-                return &self->body.operator.right;
+            {
+                Operator* operator = &self->body.operator.operator;
+                if(operator->right_arg && self->body.operator.right == NULL) {
+                    return &self->body.operator.right;
+                }
+                return AstNode_get_leaf(&self->body.operator.right);
             }
-            return AstNode_get_leaf(&self->body.operator.right);
         default:
             break;
     }
@@ -226,7 +230,6 @@ static ParserMsg AstTree_parse_operator(inout AstTree* self, inout Parser* parse
     if(*node_ptr != NULL) {
         node->body.operator.left = *node_ptr;
     }
-
 
     *node_ptr = node;
     *parser = parser_copy;
