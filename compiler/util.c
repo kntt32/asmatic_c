@@ -60,6 +60,10 @@ i64* Util_str_to_i64(in char* str, out i64* ptr) {
 
 static bool Util_is_number_helper(in char* str, in char* prefix, in u8 base) {
     str = Util_trim_str(str);
+
+    if(strlen(str) == 0) {
+        return false;
+    }
     
     for(u32 i=0; i<strlen(prefix); i++) {
         if(str[0] != prefix[i]) {

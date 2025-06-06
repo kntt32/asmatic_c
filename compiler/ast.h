@@ -18,10 +18,11 @@ typedef struct {
 struct AstNode;
 
 struct AstNode {
-    enum { AstNode_Operator, AstNode_Imm } type;
+    enum { AstNode_Operator, AstNode_Imm, AstNode_Variable } type;
     union {
         struct { Operator operator; optional struct AstNode* left; optional struct AstNode* right; } operator;
         ImmValue imm;
+        char variable[256];
     } body;
 };
 
