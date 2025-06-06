@@ -13,7 +13,7 @@ Parser Parser_new(in char* src) {
 }
 
 static char Parser_read(inout Parser* self) {
-    if(self->src[0] == '\0') {
+    if(self->len == 0) {
         return '\0';
     }
 
@@ -57,6 +57,10 @@ static void Parser_run_for_gap(inout Parser* self, out char token[256]) {
 static bool Parser_skip(inout Parser* self) {
     Parser_skip_space(self);
 
+    if(Parser_is_empty(self)) {
+        return false;
+    }
+
     char token[256];
     Parser_run_for_gap(self, token);
     if(token[0] != '\0') {
@@ -66,7 +70,7 @@ static bool Parser_skip(inout Parser* self) {
     static ParserMsg (*BLOCK_PARSERS[3])(Parser*, Parser*) = {Parser_parse_block, Parser_parse_paren, Parser_parse_index};
     for(u32 i=0; i<3; i++) {
         Parser parser;
-        if(BLOCK_PARSERS[i](self, &parser).msg[0] == '\0') {
+        if(ParserMsg_is_success(BLOCK_PARSERS[i](self, &parser))) {
             return true;
         }
     }
@@ -128,16 +132,16 @@ bool Parser_start_with_symbol(inout Parser* self, in char* symbol) {
     return ParserMsg_is_success(Parser_parse_symbol(&self_copy, symbol));
 }
 
-ParserMsg Parser_split(inout Parser* self, in bool (*split_parser)(inout Parser*), out Parser* parser) {
+ParserMsg Parser_split(inout Parser* self, in char* symbol, out Parser* parser) {
     Parser self_copy = *self;
 
     if(Parser_is_empty(self)) {
-        ParserMsg msg = {self->line, "expected token"};
-        return msg;
+        *parser = *self;
+        return SUCCESS_PARSER_MSG;
     }
 
     *parser = *self;
-    while(!split_parser(&self_copy)) {
+    while(!ParserMsg_is_success(Parser_parse_symbol(&self_copy, symbol))) {
         if(!Parser_skip(&self_copy)) {
             if(Parser_is_empty(&self_copy)) {
                 break;

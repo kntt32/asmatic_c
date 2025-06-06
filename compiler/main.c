@@ -52,7 +52,7 @@ int main() {
     printf("BBBBBBBBBBBBBBBBBBBBB\n\n");
 
     AstTree tree;
-    Parser parser4 = Parser_new("2 + ++ abc");
+    Parser parser4 = Parser_new("2 + abc++ + f(123)");
     if(ParserMsg_is_success(AstTree_parse(parser4, &tree))) {
         AstTree_print(&tree);
         AstTree_free(tree);
