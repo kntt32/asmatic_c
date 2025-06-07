@@ -18,12 +18,13 @@ typedef struct {
 struct AstNode;
 
 struct AstNode {
-    enum { AstNode_Operator, AstNode_Imm, AstNode_Variable, AstNode_Function } type;
+    enum { AstNode_Operator, AstNode_Imm, AstNode_Variable, AstNode_Function, AstNode_Type } type;
     union {
         struct { Operator operator; optional struct AstNode* left; optional struct AstNode* right; } operator;
         ImmValue imm;
         char variable[256];
-        struct { char name[256]; Vec arguments;/* Vec<AstTree> */ } function;
+        struct { struct AstNode* function_ptr; Vec arguments;/* Vec<AstTree> */ } function;
+        Type type;
     } body;
 };
 
@@ -47,5 +48,5 @@ void AstTree_print(in AstTree* self);
 
 void AstTree_free(AstTree self);
 
-ParserMsg AstTree_parse(Parser parser, out AstTree* ptr);
+ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr);
 

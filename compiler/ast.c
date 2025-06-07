@@ -6,6 +6,8 @@
 #include "ast.h"
 #include "parser.h"
 
+#define OPERATOR_PRIORITY_MAX (20)
+
 static Operator OPERATORS[] = {
     {".", true, true, 16},
     {"->", true, true, 16},
@@ -115,6 +117,12 @@ static optional AstNode** AstNode_get_leaf(in AstNode** self_ptr) {
                 if(!operator->right_arg) {
                     return NULL;
                 }
+                AstNode* right = self->body.operator.right;
+                if(right != NULL
+                    && right->type == AstNode_Operator
+                    && right->body.operator.operator.priority < operator->priority) {
+                    return NULL;
+                }
                 return AstNode_get_leaf(&self->body.operator.right);
             }
         default:
@@ -135,10 +143,17 @@ static AstNode** AstNode_get_operand(in AstNode** self_ptr, u32 operator_priorit
             if(operator_priority <= self->body.operator.operator.priority) {
                 return self_ptr;
             }
+            AstNode* right = self->body.operator.right;
+            if(right != NULL
+                && right->type == AstNode_Operator
+                && right->body.operator.operator.priority < self->body.operator.operator.priority) {
+                return self_ptr;
+            }
             return AstNode_get_operand(&self->body.operator.right, operator_priority);
         case AstNode_Imm:
         case AstNode_Variable:
         case AstNode_Function:
+        case AstNode_Type:
             return self_ptr;
     }
 
@@ -187,9 +202,15 @@ void AstNode_print(in AstNode* self) {
             printf(".variable: %s", self->body.variable);
             break;
         case AstNode_Function:
-            printf(".function: { name: %s, arguments: ", self->body.function.name);
+            printf(".function: { function_ptr: ");
+            AstNode_print(self->body.function.function_ptr);
+            printf(", arguments: ");
             Vec_print(&self->body.function.arguments, AstNode_print_ast_tree);
             printf(" }");
+            break;
+        case AstNode_Type:
+            printf(".type: ");
+            Type_print(&self->body.type);
             break;
     }
 
@@ -223,6 +244,8 @@ void AstNode_free(AstNode self) {
             break;
         case AstNode_Function:
             Vec_free_all(self.body.function.arguments, AstNode_free_ast_tree);
+            break;
+        case AstNode_Type:
             break;
     }
     return;
@@ -313,7 +336,7 @@ static ParserMsg AstTree_parse_operator(inout AstTree* self, inout Parser* parse
     return msg;
 }
 
-ParserMsg AstTree_parse_variable(inout AstTree* self, inout Parser* parser) {
+static ParserMsg AstTree_parse_variable(inout AstTree* self, inout Parser* parser) {
     char var_name[256];
     PARSERMSG_UNWRAP(
         Parser_parse_ident(parser, var_name),
@@ -342,45 +365,49 @@ static void AstTree_parse_function_free_ast_tree(inout void* ptr) {
     return;
 }
 
-static ParserMsg AstTree_parse_function(inout AstTree* self, inout Parser* parser) {
+static ParserMsg AstTree_parse_function(inout AstTree* self, inout Parser* parser, in Generator* generator) {
     Parser parser_copy = *parser;
 
-    char function_name[256] = "";
-    Parser_parse_ident(&parser_copy, function_name);
+    AstNode** operand = AstNode_get_operand(&self->node, OPERATOR_PRIORITY_MAX);
+    if(*operand == NULL) {
+        ParserMsg msg = {parser->line, "expected function name"};
+        return msg;
+    }
 
-    Parser block_parser;
+    Parser paren_parser;
     PARSERMSG_UNWRAP(
-        Parser_parse_paren(&parser_copy, &block_parser),
+        Parser_parse_paren(&parser_copy, &paren_parser),
         (void)NULL
     );
 
     Vec arguments = Vec_new(sizeof(AstTree));
 
-    while(!Parser_is_empty(&block_parser)) {
+    while(!Parser_is_empty(&paren_parser)) {
         Parser argument_parser;
         PARSERMSG_UNWRAP(
-            Parser_split(&block_parser, ",", &argument_parser),
+            Parser_split(&paren_parser, ",", &argument_parser),
             Vec_free_all(arguments, AstTree_parse_function_free_ast_tree)
         );
 
         AstTree tree;
         PARSERMSG_UNWRAP(
-            AstTree_parse(argument_parser, &tree),
+            AstTree_parse(argument_parser, generator, &tree),
             Vec_free_all(arguments, AstTree_parse_function_free_ast_tree)
         );
 
         Vec_push(&arguments, &tree);
     }
 
-    AstNode** leaf_node = AstNode_get_leaf(&self->node);
-    if(leaf_node == NULL) {
-        ParserMsg msg = {parser_copy.line, "unexpected token"};
+    AstNode** leaf_node = AstNode_get_operand(&self->node, OPERATOR_PRIORITY_MAX);
+    if(*leaf_node == NULL) {
+        Vec_free_all(arguments, AstTree_parse_function_free_ast_tree);
+        ParserMsg msg = {parser_copy.line, "expected token"};
         return msg;
     }
 
     AstNode* node = malloc(sizeof(AstNode));
     node->type = AstNode_Function;
-    strcpy(node->body.function.name, function_name);
+    node->body.function.function_ptr = *leaf_node;
     node->body.function.arguments = arguments;
 
     *leaf_node = node;
@@ -390,13 +417,139 @@ static ParserMsg AstTree_parse_function(inout AstTree* self, inout Parser* parse
     return SUCCESS_PARSER_MSG;
 }
 
-ParserMsg AstTree_parse(Parser parser, out AstTree* ptr) {
+static ParserMsg AstTree_parse_type_cast(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+    static Operator OPERATOR_TYPE_CAST = {"(cast)", true, true, 14};
+
+    Parser parser_copy = *parser;
+
+    Parser paren_parser;
+    PARSERMSG_UNWRAP(
+        Parser_parse_paren(&parser_copy, &paren_parser),
+        (void)NULL
+    );
+    Type type;
+    PARSERMSG_UNWRAP(
+        Type_parse(&paren_parser, generator, &type),
+        (void)NULL
+    );
+    if(!Parser_is_empty(&paren_parser)) {
+        ParserMsg msg = {paren_parser.line, "unexpected token"};
+        return msg;
+    }
+
+    Operator operator = OPERATOR_TYPE_CAST;
+
+    AstNode** operand = AstNode_get_operand(&self->node, operator.priority);
+    if(*operand != NULL) {
+        ParserMsg msg = {parser->line, "mismatching operator"};
+        return msg;
+    }
+
+    AstNode* type_node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(type_node);
+    
+    type_node->type = AstNode_Type;
+    type_node->body.type = type;
+
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+
+    node->type = AstNode_Operator;
+    node->body.operator.operator = operator;
+    node->body.operator.left = type_node;
+    node->body.operator.right = NULL;
+
+    *operand = node;
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+    static Operator INDEX_OPERATOR = {"[]", true, false, 16};
+
+    Parser parser_copy = *parser;
+
+    Parser index_parser;
+    PARSERMSG_UNWRAP(
+        Parser_parse_index(&parser_copy, &index_parser),
+        (void)NULL
+    );
+
+
+    AstNode** operand = AstNode_get_operand(&self->node, INDEX_OPERATOR.priority);
+    if(*operand == NULL) {
+        ParserMsg msg = {parser_copy.line, "expected operand"};
+        return msg;
+    }
+
+    AstTree tree;
+    PARSERMSG_UNWRAP(
+        AstTree_parse(index_parser, generator, &tree),
+        (void)NULL
+    );
+
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+    node->type = AstNode_Operator;
+    node->body.operator.operator = INDEX_OPERATOR;
+    node->body.operator.left = *operand;
+    node->body.operator.right = tree.node;
+
+    *operand = node;
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+ParserMsg AstTree_parse_paren(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+    static Operator PAREN_OPERATOR = {"()", false, true, 16};
+
+    Parser parser_copy = *parser;
+
+    AstNode** operand = AstNode_get_operand(&self->node, PAREN_OPERATOR.priority);
+    if(*operand != NULL) {
+        ParserMsg msg = {parser->line, "unexpected token"};
+        return msg;
+    }
+
+    Parser paren_parser;
+    PARSERMSG_UNWRAP(
+        Parser_parse_paren(&parser_copy, &paren_parser),
+        (void)(NULL)
+    );
+    AstTree tree;
+    PARSERMSG_UNWRAP(
+        AstTree_parse(paren_parser, generator, &tree),
+        (void)(NULL)
+    );
+
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+    node->type = AstNode_Operator;
+    node->body.operator.operator = PAREN_OPERATOR;
+    node->body.operator.left = NULL;
+    node->body.operator.right = tree.node;
+
+    *operand = node;
+
+    *parser = parser_copy;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr) {
     ptr->node = NULL;
 
     while(!Parser_is_empty(&parser)) {
         if(!ParserMsg_is_success(AstTree_parse_number(ptr, &parser))
+            && !ParserMsg_is_success(AstTree_parse_type_cast(ptr, &parser, generator))
+            && !ParserMsg_is_success(AstTree_parse_index(ptr, &parser, generator))
+            && !ParserMsg_is_success(AstTree_parse_paren(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_operator(ptr, &parser))
-            && !ParserMsg_is_success(AstTree_parse_function(ptr, &parser))
+            && !ParserMsg_is_success(AstTree_parse_function(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_variable(ptr, &parser))) {
             ParserMsg msg = {parser.line, "invalid expression"};
             return msg;

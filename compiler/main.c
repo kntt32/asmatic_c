@@ -51,14 +51,16 @@ int main() {
 
     printf("BBBBBBBBBBBBBBBBBBBBB\n\n");
 
+    Generator gen3 = Generator_new(NULL);
     AstTree tree;
-    Parser parser4 = Parser_new("2 + abc++ + f(123)");
-    if(ParserMsg_is_success(AstTree_parse(parser4, &tree))) {
+    Parser parser4 = Parser_new("2 + (3 + 5) - 6");
+    if(ParserMsg_is_success(AstTree_parse(parser4, &gen3, &tree))) {
         AstTree_print(&tree);
         AstTree_free(tree);
     }else {
         printf("failed");
     }
+    Generator_free(gen3);
 
     printf("\n\n");
 
