@@ -116,6 +116,7 @@ void Function_free(Function self);
 VariableStack VariableStack_new(void);
 void VariableStack_free(VariableStack self);
 void VariableStack_push(inout VariableStack* self, in Variable* variable);
+optional Variable* VariableStack_get(inout VariableStack* self, in char* name);
 u32 VariableStack_get_depth(in VariableStack* self);
 void VariableStack_set_depth(inout VariableStack* self, u32 depth);
 

@@ -242,6 +242,62 @@ ParserMsg Parser_parse_number_raw(inout Parser* self, out char value[256]) {
     return SUCCESS_PARSER_MSG;
 }
 
+ParserMsg Parser_parse_stringliteral(inout Parser* self, out char** ptr) {
+    Parser_skip_space(self);
+    Parser self_copy = *self;
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_symbol(&self_copy, "\""),
+        (void)(NULL)
+    );
+
+    bool escape_flag = false;
+    loop {
+        char c = Parser_read(&self_copy);
+        
+        if(escape_flag) {
+            escape_flag = true;
+            ParserMsg msg = {self_copy.line, "unknown escape sequence"};
+            
+            switch(c) {
+                case '0':
+                case 'n':
+                case 'r':
+                case '\\':
+                case 't':
+                case 'a':
+                case '"':
+                case '\'':
+                    break;
+                default:
+                    return msg;
+            }
+        }
+
+        switch(c) {
+            case '\0':
+                {
+                    ParserMsg msg = {self_copy.len, "expected symbol \""};
+                    return msg;
+                }
+            case '"':
+                u32 len = self->len - self_copy.len - 2;
+                *ptr = malloc(sizeof(char) * len);
+                memcpy(*ptr, self->src + 1, len);
+                *self = self_copy;
+                return SUCCESS_PARSER_MSG;
+            case '\\':
+                escape_flag = true;
+                break;
+            default:
+                break;
+        }
+    }
+
+    PANIC("unreachable here");
+    return SUCCESS_PARSER_MSG;
+}
+
 ParserMsg Parser_parse_block(inout Parser* self, out Parser* parser) {
     return Parser_parse_block_helper(self, parser, "{", "}");
 }

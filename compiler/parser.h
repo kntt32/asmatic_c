@@ -37,6 +37,8 @@ ParserMsg Parser_parse_number(inout Parser* self, out i64* value);
 
 ParserMsg Parser_parse_number_raw(inout Parser* self, out char value[256]);
 
+ParserMsg Parser_parse_stringliteral(inout Parser* self, out char** ptr);
+
 ParserMsg Parser_parse_block(inout Parser* self, out Parser* parser);
 
 ParserMsg Parser_parse_paren(inout Parser* self, out Parser* parser);

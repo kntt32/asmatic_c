@@ -57,4 +57,5 @@ extern SResult SRESULT_OK;
         PANIC("nullptr was unwrapped");\
     }\
 }
+#define loop while(true)
 

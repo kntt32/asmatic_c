@@ -628,6 +628,17 @@ void VariableStack_push(inout VariableStack* self, in Variable* variable) {
     return;
 }
 
+optional Variable* VariableStack_get(inout VariableStack* self, in char* name) {
+    for(u32 i=0; i<Vec_len(&self->stack); i++) {
+        Variable* variable = Vec_index(&self->stack, i);
+        if(strcmp(variable->name, name) == 0) {
+            return variable;
+        }
+    }
+
+    return  NULL;
+}
+
 u32 VariableStack_get_depth(in VariableStack* self) {
     return Vec_len(&self->stack);
 }
