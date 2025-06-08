@@ -675,6 +675,7 @@ Generator Generator_new(optional in char* filename) {
     generator.functions = Vec_new(sizeof(Function));
 
     generator.global_variables = Vec_new(sizeof(Variable));
+    generator.local_variables = Vec_new(sizeof(Variable));
 
     generator.code.text = String_new();
     generator.code.data = String_new();
@@ -811,6 +812,78 @@ u32 Generator_stack_push(inout Generator* self, in Type* type) {
     return stack_offset;
 }
 
+u32 Generator_stack_get(inout Generator* self) {
+    return self->stack;
+}
+
+void Generator_stack_set(inout Generator* self, u32 offset) {
+    self->stack = offset;
+    return;
+}
+
+void Generator_add_function(inout Generator* self, Function function) {
+    Vec_push(&self->functions, &function);
+    return;
+}
+
+optional Function* Generator_get_function(inout Generator* self, in char* name) {
+    for(u32 i=0; i<Vec_len(&self->functions); i++) {
+        Function* function = Vec_index(&self->functions, i);
+        if(strcmp(function->name, name) == 0) {
+            return function;
+        }
+    }
+
+    return NULL;
+}
+
+void Generator_add_global_variable(inout Generator* self, Variable variable) {
+    Vec_push(&self->global_variables, &variable);
+    return;
+}
+
+void Generator_add_local_variable(inout Generator* self, Variable variable) {
+    Vec_push(&self->local_variables, &variable);
+    return;
+}
+
+optional Variable* Generator_get_variable(in Generator* self, in char* name) {
+    for(u32 i=0; i<Vec_len(&self->local_variables); i++) {
+        Variable* ptr = Vec_index(&self->local_variables, i);
+        if(strcmp(ptr->name, name) == 0) {
+            return ptr;
+        }
+    }
+
+    for(u32 i=0; i<Vec_len(&self->global_variables); i++) {
+        Variable* ptr = Vec_index(&self->global_variables, i);
+        if(strcmp(ptr->name, name) == 0) {
+            return ptr;
+        }
+    }
+
+    return NULL;
+}
+
+u32 Generator_get_local_variables_count(in Generator* self) {
+    return Vec_len(&self->local_variables);
+}
+
+void Generator_set_local_variables_count(in Generator* self, u32 count) {
+    u32 len = Vec_len(&self->local_variables);
+    if(len < count) {
+        PANIC("count must be lower than variables count");
+    }
+
+    for(u32 i=0; i<len-count; i++) {
+        Variable variable;
+        Vec_pop(&self->local_variables, &variable);
+        Variable_free(variable);
+    }
+
+    return;
+}
+
 void Generator_free(Generator self) {
     Vec_free(self.normal_types);
     Vec_free(self.struct_types);
@@ -820,9 +893,11 @@ void Generator_free(Generator self) {
     Vec_free(self.functions);
     
     Vec_free(self.global_variables);
-    
+    Vec_free(self.local_variables);
+
     String_free(self.code.text);
     String_free(self.code.data);
+
     Vec_free(self.errors);
 
     return;

@@ -4,9 +4,11 @@
 #include <assert.h>
 #include "types.h"
 #include "ast.h"
+#include "util.h"
 #include "parser.h"
 
 #define OPERATOR_PRIORITY_MAX (20)
+#define OPERATOR_ADD {"+", true, true, 12}
 
 static Operator OPERATORS[] = {
     {".", true, true, 16},
@@ -28,7 +30,7 @@ static Operator OPERATORS[] = {
     {"/", true, true, 13},
     {"%", true, true, 13},
     
-    {"+", true, true, 12},
+    OPERATOR_ADD,
     {"-", true, true, 12},
 
     {"<<", true, true, 11},
@@ -71,16 +73,18 @@ static Operator OPERATORS[] = {
 void ImmValue_print(in ImmValue* self) {
     printf("ImmValue { type: %d, body: ", self->type);
     switch(self->type) {
-        case ImmValue_Number:
-            printf(".number: %s", self->body.number);
-            break;
         case ImmValue_String:
             printf(".string: ");
             String_print(&self->body.string);
             break;
+        case ImmValue_Integral:
+            printf(".integral: %llu", self->body.integral);
+            break;
+        case ImmValue_Floating:
+            printf(".floating: %f", self->body.floating);
+            break;
     }
     printf(" }");
-
     return;
 }
 
@@ -88,8 +92,6 @@ void ImmValue_free(ImmValue self) {
     if(self.type == ImmValue_String) {
         String_free(self.body.string);
     }
-
-    return;
 }
 
 void Operator_print(in Operator* self) {
@@ -102,6 +104,13 @@ void Operator_print(in Operator* self) {
     );
 
     return;
+}
+
+bool Operator_cmp(in Operator* self, in Operator* other) {
+    return strcmp(self->name, other->name) == 0
+        && self->left_arg == other->left_arg
+        && self->right_arg == other->right_arg
+        && self->priority == other->priority;
 }
 
 static optional AstNode** AstNode_get_leaf(in AstNode** self_ptr) {
@@ -150,15 +159,11 @@ static AstNode** AstNode_get_operand(in AstNode** self_ptr, u32 operator_priorit
                 return self_ptr;
             }
             return AstNode_get_operand(&self->body.operator.right, operator_priority);
-        case AstNode_Imm:
+        case AstNode_Number:
         case AstNode_Variable:
         case AstNode_Function:
         case AstNode_Type:
             return self_ptr;
-    }
-
-    if(self->type == AstNode_Imm) {
-        return self_ptr;
     }
 
     if(operator_priority <= self->body.operator.operator.priority) {
@@ -194,9 +199,8 @@ void AstNode_print(in AstNode* self) {
             }
             printf(" }");
             break;
-        case AstNode_Imm:
-            printf(".imm: ");
-            ImmValue_print(&self->body.imm);
+        case AstNode_Number:
+            printf(".number: %s", self->body.number);
             break;
         case AstNode_Variable:
             printf(".variable: %s", self->body.variable);
@@ -237,8 +241,7 @@ void AstNode_free(AstNode self) {
                 free(self.body.operator.right);
             }
             break;
-        case AstNode_Imm:
-            ImmValue_free(self.body.imm);
+        case AstNode_Number:
             break;
         case AstNode_Variable:
             break;
@@ -249,6 +252,56 @@ void AstNode_free(AstNode self) {
             break;
     }
     return;
+}
+
+static optional ImmValue* AstNode_eval_add(in AstNode* self, out ImmValue* imm_value) {
+    static Operator ADD = OPERATOR_ADD;
+
+    if(!(self->type == AstNode_Operator && Operator_cmp(&self->body.operator.operator, &ADD))) {
+        return NULL;
+    }
+
+    AstNode* left = self->body.operator.left;
+    AstNode* right = self->body.operator.right;
+    ImmValue left_imm;
+    ImmValue right_imm;
+    if(AstNode_eval(left, &left_imm) == NULL || AstNode_eval(right, &right_imm) == NULL) {
+        return NULL;
+    }
+
+    if(left_imm.type == ImmValue_Integral && right_imm.type == ImmValue_Integral) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_imm.body.integral + right_imm.body.integral;
+        return imm_value;
+    }
+
+    return NULL;
+}
+
+optional ImmValue* AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
+    if(self->type != AstNode_Number) {
+        return NULL;
+    }
+
+    i64 value;
+    imm_value->type = ImmValue_Integral;
+    UNWRAP_NULL(Util_str_to_i64(self->body.number, &value));
+    imm_value->body.integral = (u64)value;
+
+    return imm_value;
+}
+
+optional ImmValue* AstNode_eval(in AstNode* self, out ImmValue* imm_value) {
+    static optional ImmValue* (*EVALATORS[])(in AstNode*, out ImmValue*) = {AstNode_eval_add, AstNode_eval_number};
+
+    for(u32 i=0; i<LEN(EVALATORS); i++) {
+        optional ImmValue* ptr = EVALATORS[i](self, imm_value);
+        if(ptr != NULL) {
+            return ptr;
+        }
+    }
+
+    return NULL;
 }
 
 void AstTree_print(in AstTree* self) {
@@ -271,18 +324,29 @@ void AstTree_free(AstTree self) {
     return;
 }
 
-static ParserMsg AstTree_parse_number(in AstTree* self, inout Parser* parser) {
-    ImmValue imm_value;
-    imm_value.type = ImmValue_Number;
+static ParserMsg AstNode_parse_number(inout Parser* parser, out AstNode** ptr) {
+    char number_literal[256];
     PARSERMSG_UNWRAP(
-        Parser_parse_number_raw(parser, imm_value.body.number),
+        Parser_parse_number_raw(parser, number_literal),
         (void)NULL
     );
 
-    AstNode* ast_node = malloc(sizeof(AstNode));
-    UNWRAP_NULL(ast_node);
-    ast_node->type = AstNode_Imm;
-    ast_node->body.imm = imm_value;
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+    node->type = AstNode_Number;
+    strcpy(node->body.number, number_literal);
+
+    *ptr = node;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg AstTree_parse_number(in AstTree* self, inout Parser* parser) {
+    AstNode* ast_node;
+    PARSERMSG_UNWRAP(
+        AstNode_parse_number(parser, &ast_node),
+        (void)NULL
+    );
 
     AstNode** leaf_node = AstNode_get_leaf(&self->node);
     if(leaf_node == NULL) {
@@ -337,11 +401,18 @@ static ParserMsg AstTree_parse_operator(inout AstTree* self, inout Parser* parse
 }
 
 static ParserMsg AstTree_parse_variable(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+    Parser parser_copy = *parser;
+
     char var_name[256];
     PARSERMSG_UNWRAP(
-        Parser_parse_ident(parser, var_name),
+        Parser_parse_ident(&parser_copy, var_name),
         (void)NULL
     );
+
+    if(Generator_get_variable(generator, var_name) == NULL || Generator_get_function(generator, var_name)) {
+        ParserMsg msg = {parser->line, "undefined variable found"};
+        return msg;
+    }
 
     AstNode* ast_node = malloc(sizeof(AstNode));
     UNWRAP_NULL(ast_node);
@@ -355,6 +426,8 @@ static ParserMsg AstTree_parse_variable(inout AstTree* self, inout Parser* parse
     }
 
     *leaf_node = ast_node;
+
+    *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
 }
@@ -425,24 +498,38 @@ static ParserMsg AstTree_parse_function(inout AstTree* self, inout Parser* parse
     return SUCCESS_PARSER_MSG;
 }
 
-static ParserMsg AstTree_parse_type_cast_get_type(inout Parser* parser, in Generator* generator, out Type* type) {
-    Parser paren_parser;
+static ParserMsg AstNode_parse_type(inout Parser* parser, in Generator* generator, out AstNode** ptr) {
+    Type type;
     PARSERMSG_UNWRAP(
-        Parser_parse_paren(parser, &paren_parser),
+        Type_parse(parser, generator, &type),
         (void)NULL
     );
-    PARSERMSG_UNWRAP(
-        Type_parse(&paren_parser, generator, type),
-        (void)NULL
-    );
-    if(!Parser_is_empty(&paren_parser)) {
-        Type_free(*type);
-        ParserMsg msg = {paren_parser.line, "unexpected token"};
+
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+    node->type = AstNode_Type;
+    node->body.type = type;
+    *ptr = node;
+
+    return SUCCESS_PARSER_MSG;
+}
+
+static ParserMsg AstTree_parse_type(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+    optional AstNode** leaf = AstNode_get_leaf(&self->node);
+    if(leaf == NULL) {
+        ParserMsg msg = {parser->line, "unexpected token"};
         return msg;
     }
 
-    return SUCCESS_PARSER_MSG;
+    AstNode* nodeptr;
+    PARSERMSG_UNWRAP(
+        AstNode_parse_type(parser, generator, &nodeptr),
+        (void)NULL
+    );
 
+    *leaf = nodeptr;
+
+    return SUCCESS_PARSER_MSG;
 }
 
 static ParserMsg AstTree_parse_type_cast(inout AstTree* self, inout Parser* parser, in Generator* generator) {
@@ -456,24 +543,18 @@ static ParserMsg AstTree_parse_type_cast(inout AstTree* self, inout Parser* pars
         return msg;
     }
 
-    Type type;
+    AstNode* type_node_ptr;
     PARSERMSG_UNWRAP(
-        AstTree_parse_type_cast_get_type(parser, generator, &type),
+        AstNode_parse_type(parser, generator, &type_node_ptr),
         (void)NULL
     );
-
-    AstNode* type_node = malloc(sizeof(AstNode));
-    UNWRAP_NULL(type_node);
-    
-    type_node->type = AstNode_Type;
-    type_node->body.type = type;
 
     AstNode* node = malloc(sizeof(AstNode));
     UNWRAP_NULL(node);
 
     node->type = AstNode_Operator;
     node->body.operator.operator = TYPE_CAST_OPERATOR;
-    node->body.operator.left = type_node;
+    node->body.operator.left = type_node_ptr;
     node->body.operator.right = NULL;
 
     *operand = node;
@@ -521,7 +602,7 @@ static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, 
     return SUCCESS_PARSER_MSG;
 }
 
-ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+static ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* parser, in Generator* generator) {
     static Operator PAREN_OPERATOR = {"()", false, true, 16};
     static Operator BLOCK_OPERATOR = {"{}", false, true, 16};
     static u32 PRIORITY = 16;
@@ -573,6 +654,7 @@ ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr
             && !ParserMsg_is_success(AstTree_parse_parenblock(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_operator(ptr, &parser))
             && !ParserMsg_is_success(AstTree_parse_function(ptr, &parser, generator))
+            && !ParserMsg_is_success(AstTree_parse_type(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_variable(ptr, &parser, generator))) {
             ParserMsg msg = {parser.line, "invalid expression"};
             return msg;
@@ -580,6 +662,10 @@ ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr
     }
 
     return SUCCESS_PARSER_MSG;
+}
+
+ImmValue* AstTree_eval(in AstTree* self, out ImmValue* imm_value) {
+    return AstNode_eval(self->node, imm_value);
 }
 
 

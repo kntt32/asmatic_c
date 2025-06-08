@@ -15,6 +15,9 @@ typedef unsigned short u16;
 typedef unsigned int u32;
 typedef unsigned long long u64;
 
+typedef float f32;
+typedef double f64;
+
 typedef struct {
     bool ok_flag;
     char error[256];

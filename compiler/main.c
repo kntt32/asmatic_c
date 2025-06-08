@@ -53,9 +53,16 @@ int main() {
 
     Generator gen3 = Generator_new(NULL);
     AstTree tree;
-    Parser parser4 = Parser_new("2 + (3 + 5)&5 - 6");
+    Parser parser4 = Parser_new("2 + 5");
     if(ParserMsg_is_success(AstTree_parse(parser4, &gen3, &tree))) {
         AstTree_print(&tree);
+        printf("\n\n");
+        ImmValue immvalue;
+        if(AstTree_eval(&tree, &immvalue) != NULL) {
+            ImmValue_print(&immvalue);
+        }else {
+            printf("failed");
+        }
         AstTree_free(tree);
     }else {
         printf("failed");

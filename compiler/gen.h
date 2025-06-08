@@ -76,6 +76,7 @@ typedef struct {
     Vec functions;// Vec<Function>
 
     Vec global_variables;// Vec<Variable>
+    Vec local_variables;// Vec<Variable>
 
     struct {
         String text;
@@ -117,8 +118,6 @@ VariableStack VariableStack_new(void);
 void VariableStack_free(VariableStack self);
 void VariableStack_push(inout VariableStack* self, in Variable* variable);
 optional Variable* VariableStack_get(inout VariableStack* self, in char* name);
-u32 VariableStack_get_depth(in VariableStack* self);
-void VariableStack_set_depth(inout VariableStack* self, u32 depth);
 
 Generator Generator_new(optional in char* filename);
 void Generator_print(in Generator* self);
@@ -134,5 +133,14 @@ void Generator_asm_add_text(inout Generator* self, in char* s);
 void Generator_asm_add_data(inout Generator* self, in char* s);
 void Generator_add_error(inout Generator* self, in Error err);
 u32 Generator_stack_push(inout Generator* self, in Type* type);
+u32 Generator_stack_get(inout Generator* self);
+void Generator_add_function(inout Generator* self, Function function);
+optional Function* Generator_get_function(inout Generator* self, in char* name);
+void Generator_add_global_variable(inout Generator* self, Variable variable);
+void Generator_add_local_variable(inout Generator* self, Variable variable);
+optional Variable* Generator_get_variable(in Generator* self, in char* name);
+u32 Generator_get_local_variables_count(in Generator* self);
+void Generator_set_local_variables_count(in Generator* self, u32 count);
+void Generator_stack_set(inout Generator* self, u32 offset);
 void Generator_free(Generator self);
 

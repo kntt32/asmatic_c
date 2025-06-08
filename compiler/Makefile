@@ -13,7 +13,7 @@ util.o: util.c util.h types.h
 register.o: register.c register.h types.h
 gen.o: gen.c gen.h types.h parser.h register.h
 syntax.o: syntax.c types.h parser.h syntax.h
-ast.o: ast.c types.h parser.h ast.h
+ast.o: ast.c types.h parser.h util.h ast.h
 
 types.h:
 parser.h: types.h
