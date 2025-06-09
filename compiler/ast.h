@@ -8,14 +8,15 @@ typedef struct {
     union { String string; u64 integral; f64 floating; } body;
 } ImmValue;
 
+struct AstNode;
+
 typedef struct {
     char name[16];
     bool left_arg;
     bool right_arg;
     u32 priority;
+    SResult (*eval)(in struct AstNode* node, out ImmValue* ptr);
 } Operator;
-
-struct AstNode;
 
 struct AstNode {
     enum { AstNode_Operator, AstNode_Number, AstNode_Variable, AstNode_Function, AstNode_Type } type;
@@ -46,7 +47,7 @@ void AstNode_print(in AstNode* self);
 
 void AstNode_free(AstNode self);
 
-optional ImmValue* AstNode_eval(in AstNode* self, out ImmValue* imm_value);
+SResult AstNode_eval(in AstNode* self, out ImmValue* imm_value);
 
 void AstTree_print(in AstTree* self);
 
@@ -54,5 +55,5 @@ void AstTree_free(AstTree self);
 
 ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr);
 
-ImmValue* AstTree_eval(in AstTree* self, out ImmValue* imm_value);
+SResult AstTree_eval(in AstTree* self, out ImmValue* imm_value);
 

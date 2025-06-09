@@ -11,63 +11,63 @@
 #define OPERATOR_ADD {"+", true, true, 12}
 
 static Operator OPERATORS[] = {
-    {".", true, true, 16},
-    {"->", true, true, 16},
-    {"++", true, false, 16},
-    {"--", true, false, 16},
+    {".", true, true, 16, NULL},
+    {"->", true, true, 16, NULL},
+    {"++", true, false, 16, NULL},
+    {"--", true, false, 16, NULL},
 
-    {"sizeof", false, true, 15},
-    {"&", false, true, 15},
-    {"*", false, true, 15},
-    {"+", false, true, 15},
-    {"-", false, true, 15},
-    {"~", false, true, 15},
-    {"!", false, true, 15},
-    {"++", false, true, 15},
-    {"--", false, true, 15},
+    {"sizeof", false, true, 15, NULL},
+    {"&", false, true, 15, NULL},
+    {"*", false, true, 15, NULL},
+    {"+", false, true, 15, NULL},
+    {"-", false, true, 15, NULL},
+    {"~", false, true, 15, NULL},
+    {"!", false, true, 15, NULL},
+    {"++", false, true, 15, NULL},
+    {"--", false, true, 15, NULL},
 
-    {"*", true, true, 13},
-    {"/", true, true, 13},
-    {"%", true, true, 13},
+    {"*", true, true, 13, NULL},
+    {"/", true, true, 13, NULL},
+    {"%", true, true, 13, NULL},
     
-    OPERATOR_ADD,
-    {"-", true, true, 12},
+    {"+", true, true, 12, NULL},
+    {"-", true, true, 12, NULL},
 
-    {"<<", true, true, 11},
-    {">>", true, true, 11},
+    {"<<", true, true, 11, NULL},
+    {">>", true, true, 11, NULL},
 
-    {"<", true, true, 10},
-    {">", true, true, 10},
-    {"<=", true, true, 10},
-    {">=", true, true, 10},
+    {"<", true, true, 10, NULL},
+    {">", true, true, 10, NULL},
+    {"<=", true, true, 10, NULL},
+    {">=", true, true, 10, NULL},
 
-    {"==", true, true, 9},
-    {"!=", true, true, 9},
+    {"==", true, true, 9, NULL},
+    {"!=", true, true, 9, NULL},
 
-    {"&", true, true, 8},
+    {"&", true, true, 8, NULL},
 
-    {"^", true, true, 7},
+    {"^", true, true, 7, NULL},
     
-    {"|", true, true, 6},
+    {"|", true, true, 6, NULL},
     
-    {"&&", true, true, 5},
+    {"&&", true, true, 5, NULL},
 
-    {"||", true, true, 4},
+    {"||", true, true, 4, NULL},
 
-    {"?", true, true, 3},
-    {":", true, true, 3},
+    {"?", true, true, 3, NULL},
+    {":", true, true, 3, NULL},
 
-    {"=", true, true, 2},
-    {"*=", true, true, 2},
-    {"/=", true, true, 2},
-    {"%=", true, true, 2},
-    {"+=", true, true, 2},
-    {"-=", true, true, 2},
-    {"<<=", true, true, 2},
-    {">>=", true, true, 2},
-    {"&=", true, true, 2},
-    {"^=", true, true, 2},
-    {"|=", true, true, 2},
+    {"=", true, true, 2, NULL},
+    {"*=", true, true, 2, NULL},
+    {"/=", true, true, 2, NULL},
+    {"%=", true, true, 2, NULL},
+    {"+=", true, true, 2, NULL},
+    {"-=", true, true, 2, NULL},
+    {"<<=", true, true, 2, NULL},
+    {">>=", true, true, 2, NULL},
+    {"&=", true, true, 2, NULL},
+    {"^=", true, true, 2, NULL},
+    {"|=", true, true, 2, NULL},
 };
 
 void ImmValue_print(in ImmValue* self) {
@@ -253,55 +253,54 @@ void AstNode_free(AstNode self) {
     }
     return;
 }
+/*
+static SResult AstNode_eval_operator_helper(in AstNode* self, out ImmValue* imm_value, ) {
 
-static optional ImmValue* AstNode_eval_add(in AstNode* self, out ImmValue* imm_value) {
-    static Operator ADD = OPERATOR_ADD;
-
-    if(!(self->type == AstNode_Operator && Operator_cmp(&self->body.operator.operator, &ADD))) {
-        return NULL;
-    }
-
-    AstNode* left = self->body.operator.left;
-    AstNode* right = self->body.operator.right;
-    ImmValue left_imm;
-    ImmValue right_imm;
-    if(AstNode_eval(left, &left_imm) == NULL || AstNode_eval(right, &right_imm) == NULL) {
-        return NULL;
-    }
-
-    if(left_imm.type == ImmValue_Integral && right_imm.type == ImmValue_Integral) {
-        imm_value->type = ImmValue_Integral;
-        imm_value->body.integral = left_imm.body.integral + right_imm.body.integral;
-        return imm_value;
-    }
-
-    return NULL;
 }
-
-optional ImmValue* AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
-    if(self->type != AstNode_Number) {
-        return NULL;
-    }
+*/
+static SResult AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
+    assert(self->type == AstNode_Number);
 
     i64 value;
     imm_value->type = ImmValue_Integral;
     UNWRAP_NULL(Util_str_to_i64(self->body.number, &value));
     imm_value->body.integral = (u64)value;
 
-    return imm_value;
+    return SRESULT_OK;
 }
 
-optional ImmValue* AstNode_eval(in AstNode* self, out ImmValue* imm_value) {
-    static optional ImmValue* (*EVALATORS[])(in AstNode*, out ImmValue*) = {AstNode_eval_add, AstNode_eval_number};
-
-    for(u32 i=0; i<LEN(EVALATORS); i++) {
-        optional ImmValue* ptr = EVALATORS[i](self, imm_value);
-        if(ptr != NULL) {
-            return ptr;
+static SResult AstNode_eval_operator(in AstNode* self, out ImmValue* imm_value) {
+    for(u32 i=0; i<LEN(OPERATORS); i++) {
+        if(Operator_cmp(&self->body.operator.operator, &OPERATORS[i])) {
+            if(OPERATORS[i].eval != NULL) {
+                SRESULT_UNWRAP(
+                    OPERATORS[i].eval(self, imm_value),
+                    (void)NULL
+                );
+            }else {
+                SResult result = {false, "cannot evaluate statically"};
+                return result;
+            }
         }
     }
 
-    return NULL;
+    PANIC("unreachable here");
+}
+
+SResult AstNode_eval(in AstNode* self, out ImmValue* imm_value) {
+    switch(self->type) {
+        case AstNode_Operator:
+            return AstNode_eval_operator(self, imm_value);
+        case AstNode_Number:
+            return AstNode_eval_number(self, imm_value);
+        default:
+            TODO();
+            break;
+    }
+
+    PANIC("unreachable here");
+
+    return SRESULT_OK;
 }
 
 void AstTree_print(in AstTree* self) {
@@ -533,7 +532,7 @@ static ParserMsg AstTree_parse_type(inout AstTree* self, inout Parser* parser, i
 }
 
 static ParserMsg AstTree_parse_type_cast(inout AstTree* self, inout Parser* parser, in Generator* generator) {
-    static Operator TYPE_CAST_OPERATOR = {"(cast)", true, true, 14};
+    static Operator TYPE_CAST_OPERATOR = {"(cast)", true, true, 14, NULL};
 
     Parser parser_copy = *parser;
 
@@ -565,7 +564,7 @@ static ParserMsg AstTree_parse_type_cast(inout AstTree* self, inout Parser* pars
 }
 
 static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, in Generator* generator) {
-    static Operator INDEX_OPERATOR = {"[]", true, false, 16};
+    static Operator INDEX_OPERATOR = {"[]", true, false, 16, NULL};
 
     Parser parser_copy = *parser;
 
@@ -603,8 +602,8 @@ static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, 
 }
 
 static ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* parser, in Generator* generator) {
-    static Operator PAREN_OPERATOR = {"()", false, true, 16};
-    static Operator BLOCK_OPERATOR = {"{}", false, true, 16};
+    static Operator PAREN_OPERATOR = {"()", false, true, 16, NULL};
+    static Operator BLOCK_OPERATOR = {"{}", false, true, 16, NULL};
     static u32 PRIORITY = 16;
 
     Parser parser_copy = *parser;
@@ -664,7 +663,7 @@ ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr
     return SUCCESS_PARSER_MSG;
 }
 
-ImmValue* AstTree_eval(in AstTree* self, out ImmValue* imm_value) {
+SResult AstTree_eval(in AstTree* self, out ImmValue* imm_value) {
     return AstNode_eval(self->node, imm_value);
 }
 

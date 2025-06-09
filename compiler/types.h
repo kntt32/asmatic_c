@@ -49,9 +49,10 @@ extern SResult SRESULT_OK;
 #define MAX(x, y) (x > y)?(x):(y)
 #define BOOL_TO_STR(b) (b)?("true"):("false")
 #define SRESULT_IS_OK(r) (r.ok_flag)
-#define SRESULT_UNWRAP(r) {\
+#define SRESULT_UNWRAP(r, catch_proc) {\
     SResult result = r;\
     if(!SRESULT_IS_OK(result)) {\
+        catch_proc;\
         return result;\
     }\
 }

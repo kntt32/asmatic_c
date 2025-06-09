@@ -58,7 +58,7 @@ int main() {
         AstTree_print(&tree);
         printf("\n\n");
         ImmValue immvalue;
-        if(AstTree_eval(&tree, &immvalue) != NULL) {
+        if(SRESULT_IS_OK(AstTree_eval(&tree, &immvalue))) {
             ImmValue_print(&immvalue);
         }else {
             printf("failed");
