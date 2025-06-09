@@ -5,7 +5,6 @@
 #include "ast.h"
 
 int main() {
-    
     Generator gen = Generator_new(NULL);
     Parser parser = Parser_new("const static struct {i32 a; i32 b;} @data a[5]");
     Variable variable;
@@ -34,6 +33,7 @@ int main() {
     printf("AAAAAAAAAAAAAAAAAAAAAA\n\n\n");
 
     Generator gen2 = Generator_new(NULL);
+
     Parser parser3 = Parser_new("\
         typedef struct { u32 line; char msg[256]; } ParserMsg;\n\
         struct MyStruct {\n\

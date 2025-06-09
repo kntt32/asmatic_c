@@ -44,7 +44,7 @@ static void Parser_run_for_gap(inout Parser* self, out char token[256]) {
     Parser_skip_space(self);
     u32 len = 0;
     
-    while(isascii(self->src[0]) && !Parser_is_gap(self) && len < 256) {
+    while(isascii(self->src[0]) && !Parser_is_gap(self) && len < 256 - 1) {
         token[len] = Parser_read(self);
         len ++;
     }

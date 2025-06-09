@@ -26,9 +26,24 @@ static SyntaxStatus Syntax_build_typedef(inout Parser* parser, inout Generator* 
         return SyntaxStatus_None;
     }
 
-    SYNTAX_ADD_ERROR(Type_parse(parser, generator, &type), generator, Parser_skip_to_semicolon(parser));
-    SYNTAX_ADD_ERROR(Parser_parse_ident(parser, type.name), generator, Parser_skip_to_semicolon(parser));
-    SYNTAX_ADD_ERROR(Parser_parse_symbol(parser, ";"), generator, (void)(NULL));
+    SYNTAX_ADD_ERROR(
+        Type_parse(parser, generator, &type),
+        generator,
+        Parser_skip_to_semicolon(parser)
+    );
+    SYNTAX_ADD_ERROR(
+        Parser_parse_ident(parser, type.name),
+        generator,
+        {
+            Parser_skip_to_semicolon(parser);
+            Type_free(type);
+        }
+    );
+    SYNTAX_ADD_ERROR(
+        Parser_parse_symbol(parser, ";"),
+        generator,
+        Type_free(type)
+    );
 
     Generator_add_normal_type(generator, type);
 
@@ -49,7 +64,7 @@ static SyntaxStatus Syntax_build_type_declare(inout Parser* parser, inout Genera
     SYNTAX_ADD_ERROR(
         Parser_parse_symbol(parser, ";"),
         generator,
-        (void)NULL
+        Type_free(type)
     );
 
     switch(type.type) {

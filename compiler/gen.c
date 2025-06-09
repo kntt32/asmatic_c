@@ -884,16 +884,34 @@ void Generator_set_local_variables_count(in Generator* self, u32 count) {
     return;
 }
 
-void Generator_free(Generator self) {
-    Vec_free(self.normal_types);
-    Vec_free(self.struct_types);
-    Vec_free(self.enum_types);
-    Vec_free(self.union_types);
+static void Generator_free_type_free(void* ptr) {
+    Type* type_ptr = ptr;
+    Type_free(*type_ptr);
+    return;
+}
 
-    Vec_free(self.functions);
+static void Generator_free_function_free(void* ptr) {
+    Function* func_ptr = ptr;
+    Function_free(*func_ptr);
+    return;
+}
+
+static void Generator_free_variable_free(void* ptr) {
+    Variable* variable_ptr = ptr;
+    Variable_free(*variable_ptr);
+    return;
+}
+
+void Generator_free(Generator self) {
+    Vec_free_all(self.normal_types, Generator_free_type_free);
+    Vec_free_all(self.struct_types, Generator_free_type_free);
+    Vec_free_all(self.enum_types, Generator_free_type_free);
+    Vec_free_all(self.union_types, Generator_free_type_free);
+
+    Vec_free_all(self.functions, Generator_free_function_free);
     
-    Vec_free(self.global_variables);
-    Vec_free(self.local_variables);
+    Vec_free_all(self.global_variables, Generator_free_variable_free);
+    Vec_free_all(self.local_variables, Generator_free_variable_free);
 
     String_free(self.code.text);
     String_free(self.code.data);
