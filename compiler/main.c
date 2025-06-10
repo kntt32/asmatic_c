@@ -53,7 +53,7 @@ int main() {
 
     Generator gen3 = Generator_new(NULL);
     AstTree tree;
-    Parser parser4 = Parser_new("(3+6)*7");
+    Parser parser4 = Parser_new("(3 >= 2) ? (5) : (13)");
     if(ParserMsg_is_success(AstTree_parse(parser4, &gen3, &tree))) {
         AstTree_print(&tree);
         printf("\n\n");

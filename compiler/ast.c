@@ -29,6 +29,11 @@ static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_val
 static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_value);
 static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_value);
 static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_invert(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_boolinvert(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_plus(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_minus(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, out ImmValue* imm_value);
 
 static Operator OPERATORS[] = {
     {"sizeof", false, true, 15, AstNode_eval_operator_sizeof},
@@ -67,10 +72,10 @@ static Operator OPERATORS[] = {
     {".", true, true, 16, NULL},
     {"&", false, true, 15, NULL},
     {"*", false, true, 15, NULL},
-    {"+", false, true, 15, NULL},
-    {"-", false, true, 15, NULL},
-    {"~", false, true, 15, NULL},
-    {"!", false, true, 15, NULL},
+    {"+", false, true, 15, AstNode_eval_operator_plus},
+    {"-", false, true, 15, AstNode_eval_operator_minus},
+    {"~", false, true, 15, AstNode_eval_operator_invert},
+    {"!", false, true, 15, AstNode_eval_operator_boolinvert},
 
     {"*", true, true, 13, AstNode_eval_operator_mult},
     {"/", true, true, 13, AstNode_eval_operator_div},
@@ -89,7 +94,7 @@ static Operator OPERATORS[] = {
     {"|", true, true, 6, AstNode_eval_operator_or},
     
     {"?", true, true, 3, NULL},
-    {":", true, true, 3, NULL},
+    {":", true, true, 3, AstNode_eval_operator_hatenacolon},
 
     {"=", true, true, 2, NULL},
 };
@@ -675,6 +680,149 @@ static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
+static SResult AstNode_eval_operator_aninteger_helper(in AstNode* self, out u64* value) {
+    ImmValue imm_value;
+    if(self->body.operator.operator.left_arg) {
+        SRESULT_UNWRAP(
+            AstNode_eval(self->body.operator.left, &imm_value),
+            (void)NULL
+        );
+    }else {
+        SRESULT_UNWRAP(
+            AstNode_eval(self->body.operator.right, &imm_value),
+            (void)NULL
+        );
+    }
+
+    if(imm_value.type != ImmValue_Integral) {
+        SResult result = {false, "expected integer"};
+        return result;
+    }
+
+    *value = imm_value.body.integral;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_afloating_helper(in AstNode* self, out f64* value) {
+    ImmValue imm_value;
+    if(self->body.operator.operator.left_arg) {
+        SRESULT_UNWRAP(
+            AstNode_eval(self->body.operator.left, &imm_value),
+            (void)NULL
+        );
+    }else {
+        SRESULT_UNWRAP(
+            AstNode_eval(self->body.operator.right, &imm_value),
+            (void)NULL
+        );
+    }
+
+    switch(imm_value.type) {
+        case ImmValue_Integral:
+            *value = (f64)imm_value.body.integral;
+            break;
+        case ImmValue_Floating:
+            *value = (f64)imm_value.body.floating;
+            break;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_invert(in AstNode* self, out ImmValue* imm_value) {
+    u64 value;
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_aninteger_helper(self, &value),
+        (void)NULL
+    );
+
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = ~value;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_boolinvert(in AstNode* self, out ImmValue* imm_value) {
+    u64 value;
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_aninteger_helper(self, &value),
+        (void)NULL
+    );
+
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = !value;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_plus(in AstNode* self, out ImmValue* imm_value) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, &imm_value->body.integral))) {
+        imm_value->type = ImmValue_Integral;
+    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, &imm_value->body.floating))) {
+        imm_value->type = ImmValue_Floating;
+    }else {
+        SResult result = {false, "expected number"};
+        return result;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_minus(in AstNode* self, out ImmValue* imm_value) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, &imm_value->body.integral))) {
+        imm_value->body.integral = - imm_value->body.integral;
+        imm_value->type = ImmValue_Integral;
+    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, &imm_value->body.floating))) {
+        imm_value->body.floating = - imm_value->body.floating;
+        imm_value->type = ImmValue_Floating;
+    }else {
+        SResult result = {false, "expected number"};
+        return result;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, out ImmValue* imm_value) {
+    static SResult result = {false, "expected argument"};
+    if(self->body.operator.left == NULL || self->body.operator.right == NULL) {
+        return result;
+    }
+    AstNode* hatena_node = self->body.operator.left;
+    if(hatena_node->type != AstNode_Operator || strcmp(hatena_node->body.operator.operator.name, "?") != 0) {
+        return result;
+    }
+    if(hatena_node->body.operator.left == NULL || hatena_node->body.operator.right == NULL) {
+        return result;
+    }
+
+    ImmValue arg_1;
+    SRESULT_UNWRAP(
+        AstNode_eval(hatena_node->body.operator.left, &arg_1),
+        (void)NULL
+    );
+    u64 arg_1_u64;
+    SRESULT_UNWRAP(
+        ImmValue_as_integer(&arg_1, &arg_1_u64),
+        (void)NULL
+    );
+
+    if(arg_1_u64) {
+        SRESULT_UNWRAP(
+            AstNode_eval(hatena_node->body.operator.right, imm_value),
+            (void)NULL
+        );
+    }else {
+        SRESULT_UNWRAP(
+            AstNode_eval(self->body.operator.right, imm_value),
+            (void)NULL
+        );
+    }
+
+    return SRESULT_OK;
+}
+
 static SResult AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
     assert(self->type == AstNode_Number);
 
@@ -1004,9 +1152,8 @@ static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, 
     return SUCCESS_PARSER_MSG;
 }
 
-static ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* parser, in Generator* generator) {
+static ParserMsg AstTree_parse_paren(inout AstTree* self, inout Parser* parser, in Generator* generator) {
     static Operator PAREN_OPERATOR = {"()", false, true, 16, AstNode_eval_operator_paren};
-    static Operator BLOCK_OPERATOR = {"{}", false, true, 16, NULL};
     static u32 PRIORITY = 16;
 
     Parser parser_copy = *parser;
@@ -1019,13 +1166,8 @@ static ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* par
 
     Parser inner_parser;
     Operator operator = PAREN_OPERATOR;
-    if(!ParserMsg_is_success(Parser_parse_paren(&parser_copy, &inner_parser))) {
-        operator = BLOCK_OPERATOR;
-        PARSERMSG_UNWRAP(
-            Parser_parse_block(&parser_copy, &inner_parser),
-            (void)(NULL)
-        )
-    }
+    PARSERMSG_UNWRAP(Parser_parse_paren(&parser_copy, &inner_parser), (void)NULL);
+
     AstTree tree;
     PARSERMSG_UNWRAP(
         AstTree_parse(inner_parser, generator, &tree),
@@ -1053,7 +1195,7 @@ ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr
         if(!ParserMsg_is_success(AstTree_parse_number(ptr, &parser))
             && !ParserMsg_is_success(AstTree_parse_type_cast(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_index(ptr, &parser, generator))
-            && !ParserMsg_is_success(AstTree_parse_parenblock(ptr, &parser, generator))
+            && !ParserMsg_is_success(AstTree_parse_paren(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_operator(ptr, &parser))
             && !ParserMsg_is_success(AstTree_parse_function(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_type(ptr, &parser, generator))
