@@ -1,10 +1,10 @@
 RELEASE ?= 0
 
 CC := gcc
-ifeq ($(RELEASE), 1)
+
+CFLAGS := -Wall -Wextra -g -fsanitize=undefined -fsanitize=address
+ifeq ($(RELEASE),1)
 	CFLAGS := -Wall -Wextra -Ofast
-else
-	CFLAGS := -Wall -Wextra -g -fsanitize=undefined -fsanitize=address
 endif
 
 compiler.elf: main.o types.o vec.o str.o parser.o util.o register.o gen.o syntax.o ast.o

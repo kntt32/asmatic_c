@@ -4,8 +4,8 @@
 #include "gen.h"
 
 typedef struct {
-    enum { ImmValue_String, ImmValue_Integral, ImmValue_Floating } type;
-    union { String string; u64 integral; f64 floating; } body;
+    enum { ImmValue_Integral, ImmValue_Floating } type;
+    union { u64 integral; f64 floating; } body;
 } ImmValue;
 
 struct AstNode;
@@ -35,9 +35,11 @@ typedef struct {
     AstNode* node;
 } AstTree;
 
-void ImmValue_print(in ImmValue* self);
+SResult ImmValue_as_integer(in ImmValue* self, out u64* value);
 
-void ImmValue_free(ImmValue self);
+SResult ImmValue_as_floating(in ImmValue* self, out f64* value);
+
+void ImmValue_print(in ImmValue* self);
 
 void Operator_print(in Operator* self);
 

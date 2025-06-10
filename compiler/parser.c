@@ -61,6 +61,12 @@ static bool Parser_skip(inout Parser* self) {
         return false;
     }
 
+    char* ptr = NULL;
+    if(ParserMsg_is_success(Parser_parse_stringliteral(self, &ptr))) {
+        free(ptr);
+        return true;
+    }
+    
     char token[256];
     Parser_run_for_gap(self, token);
     if(token[0] != '\0') {

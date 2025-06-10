@@ -10,73 +10,122 @@
 #define OPERATOR_PRIORITY_MAX (20)
 #define OPERATOR_ADD {"+", true, true, 12}
 
+static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_and(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_or(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_xor(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_booland(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_boolor(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_equal(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_notequal(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_lessthan(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_greaterthan(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_add(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_value);
+
 static Operator OPERATORS[] = {
-    {".", true, true, 16, NULL},
+    {"sizeof", false, true, 15, AstNode_eval_operator_sizeof},
+
+    {"<<=", true, true, 2, NULL},
+    {">>=", true, true, 2, NULL},
+
     {"->", true, true, 16, NULL},
     {"++", true, false, 16, NULL},
     {"--", true, false, 16, NULL},
 
-    {"sizeof", false, true, 15, NULL},
+    {"++", false, true, 15, NULL},
+    {"--", false, true, 15, NULL},
+
+    {"<<", true, true, 11, AstNode_eval_operator_leftbitshift},
+    {">>", true, true, 11, AstNode_eval_operator_rightbitshift},
+    
+    {"<=", true, true, 10, AstNode_eval_operator_eqgreaterthan},
+    {">=", true, true, 10, AstNode_eval_operator_eqlessthan},
+
+    {"==", true, true, 9, AstNode_eval_operator_equal},
+    {"!=", true, true, 9, AstNode_eval_operator_notequal},
+
+    {"&&", true, true, 5, AstNode_eval_operator_booland},
+    {"||", true, true, 4, AstNode_eval_operator_boolor},
+
+    {"*=", true, true, 2, NULL},
+    {"/=", true, true, 2, NULL},
+    {"%=", true, true, 2, NULL},
+    {"+=", true, true, 2, NULL},
+    {"-=", true, true, 2, NULL},
+    {"&=", true, true, 2, NULL},
+    {"^=", true, true, 2, NULL},
+    {"|=", true, true, 2, NULL},
+
+    {".", true, true, 16, NULL},
     {"&", false, true, 15, NULL},
     {"*", false, true, 15, NULL},
     {"+", false, true, 15, NULL},
     {"-", false, true, 15, NULL},
     {"~", false, true, 15, NULL},
     {"!", false, true, 15, NULL},
-    {"++", false, true, 15, NULL},
-    {"--", false, true, 15, NULL},
 
-    {"*", true, true, 13, NULL},
-    {"/", true, true, 13, NULL},
-    {"%", true, true, 13, NULL},
+    {"*", true, true, 13, AstNode_eval_operator_mult},
+    {"/", true, true, 13, AstNode_eval_operator_div},
+    {"%", true, true, 13, AstNode_eval_operator_mod},
     
-    {"+", true, true, 12, NULL},
-    {"-", true, true, 12, NULL},
+    {"+", true, true, 12, AstNode_eval_operator_add},
+    {"-", true, true, 12, AstNode_eval_operator_sub},
 
-    {"<<", true, true, 11, NULL},
-    {">>", true, true, 11, NULL},
+    {"<", true, true, 10, AstNode_eval_operator_greaterthan},
+    {">", true, true, 10, AstNode_eval_operator_lessthan},
 
-    {"<", true, true, 10, NULL},
-    {">", true, true, 10, NULL},
-    {"<=", true, true, 10, NULL},
-    {">=", true, true, 10, NULL},
+    {"&", true, true, 8, AstNode_eval_operator_and},
 
-    {"==", true, true, 9, NULL},
-    {"!=", true, true, 9, NULL},
-
-    {"&", true, true, 8, NULL},
-
-    {"^", true, true, 7, NULL},
+    {"^", true, true, 7, AstNode_eval_operator_xor},
     
-    {"|", true, true, 6, NULL},
+    {"|", true, true, 6, AstNode_eval_operator_or},
     
-    {"&&", true, true, 5, NULL},
-
-    {"||", true, true, 4, NULL},
-
     {"?", true, true, 3, NULL},
     {":", true, true, 3, NULL},
 
     {"=", true, true, 2, NULL},
-    {"*=", true, true, 2, NULL},
-    {"/=", true, true, 2, NULL},
-    {"%=", true, true, 2, NULL},
-    {"+=", true, true, 2, NULL},
-    {"-=", true, true, 2, NULL},
-    {"<<=", true, true, 2, NULL},
-    {">>=", true, true, 2, NULL},
-    {"&=", true, true, 2, NULL},
-    {"^=", true, true, 2, NULL},
-    {"|=", true, true, 2, NULL},
 };
+
+SResult ImmValue_as_integer(in ImmValue* self, out u64* value) {
+    static SResult EXPECTED_INTEGER = {false, "expected integer"};
+
+    if(self->type != ImmValue_Integral) {
+        return EXPECTED_INTEGER;
+    }
+
+    *value = self->body.integral;
+
+    return SRESULT_OK;
+}
+
+SResult ImmValue_as_floating(in ImmValue* self, out f64* value) {
+    static SResult EXPECTED_FLOATING = {false, "expected floating point number"};
+
+    switch(self->type) {
+        case ImmValue_Integral:
+            *value = (f64)self->body.integral;
+            break;
+        case ImmValue_Floating:
+            *value = self->body.floating;
+            break;
+        default:
+            return EXPECTED_FLOATING;
+    }
+
+    return SRESULT_OK;
+}
 
 void ImmValue_print(in ImmValue* self) {
     printf("ImmValue { type: %d, body: ", self->type);
     switch(self->type) {
-        case ImmValue_String:
-            printf(".string: ");
-            String_print(&self->body.string);
-            break;
         case ImmValue_Integral:
             printf(".integral: %llu", self->body.integral);
             break;
@@ -86,12 +135,6 @@ void ImmValue_print(in ImmValue* self) {
     }
     printf(" }");
     return;
-}
-
-void ImmValue_free(ImmValue self) {
-    if(self.type == ImmValue_String) {
-        String_free(self.body.string);
-    }
 }
 
 void Operator_print(in Operator* self) {
@@ -253,11 +296,385 @@ void AstNode_free(AstNode self) {
     }
     return;
 }
-/*
-static SResult AstNode_eval_operator_helper(in AstNode* self, out ImmValue* imm_value, ) {
 
+static SResult AstNode_eval_operator_integers_helper(in AstNode* self, out u64* left, out u64* right) {
+    static SResult EXPECTED_ARGUMENT = {false, "expected argument"};
+    if(self->body.operator.left == NULL || self->body.operator.right == NULL) {
+        return EXPECTED_ARGUMENT;
+    }
+
+    ImmValue left_imm;
+    ImmValue right_imm;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.left, &left_imm),
+        (void)NULL
+    );
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.right, &right_imm),
+        (void)NULL
+    );
+
+    SRESULT_UNWRAP(
+        ImmValue_as_integer(&left_imm, left),
+        (void)NULL
+    );
+    SRESULT_UNWRAP(
+        ImmValue_as_integer(&right_imm, right),
+        (void)NULL
+    );
+
+    return SRESULT_OK;
 }
-*/
+
+static SResult AstNode_eval_operator_floatings_helper(in AstNode* self, out f64* left, out f64* right) {
+    ImmValue left_imm;
+    ImmValue right_imm;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.left, &left_imm),
+        (void)NULL
+    );
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.right, &right_imm),
+        (void)NULL
+    );
+
+    SRESULT_UNWRAP(
+        ImmValue_as_floating(&left_imm, left),
+        (void)NULL
+    );
+    SRESULT_UNWRAP(
+        ImmValue_as_floating(&right_imm, right),
+        (void)NULL
+    );
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_paren(in AstNode* self, out ImmValue* imm_value) {
+    if(self->body.operator.left != NULL || self->body.operator.right == NULL) {
+        SResult result = {false, "invalid arguments of () operator"};
+        return result;
+    }
+
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.right, imm_value),
+        (void)NULL
+    );
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_value) {
+    if(self->body.operator.left != NULL || self->body.operator.right == NULL) {
+        SResult result = {false, "invalid arguments of sizeof operator"};
+        return result;
+    }
+
+    ImmValue arg_imm_value;
+    SRESULT_UNWRAP(
+        AstNode_eval(self->body.operator.right, &arg_imm_value),
+        (void)NULL
+    );
+
+    imm_value->type = ImmValue_Integral;
+    switch(arg_imm_value.type) {
+        case ImmValue_Integral:
+            imm_value->body.integral = 8;
+            break;
+        case ImmValue_Floating:
+            imm_value->body.floating = 8;
+            break;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_and(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int & right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_or(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int | right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_xor(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int ^ right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_booland(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int && right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_boolor(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int || right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_equal(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int == (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float == right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_notequal(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int != (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float != right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_lessthan(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int > (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float > right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_greaterthan(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int < (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float < right_float;
+    }
+
+    return SRESULT_OK;
+   
+}
+
+static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int <= (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float <= right_float;
+    }
+
+    return SRESULT_OK;
+   
+}
+
+static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int >= (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = left_float >= right_float;
+    }
+
+    return SRESULT_OK;
+   
+}
+
+static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int << right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = left_int >> right_int;
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_add(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int + (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Floating;
+        imm_value->body.floating = left_float + right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int - (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Floating;
+        imm_value->body.floating = left_float - right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int * (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Floating;
+        imm_value->body.floating = left_float * right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    f64 left_float;
+    f64 right_float;
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+        imm_value->type = ImmValue_Integral;
+        imm_value->body.integral = (u64)((i64)left_int / (i64)right_int);
+    }else {
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        imm_value->type = ImmValue_Floating;
+        imm_value->body.floating = left_float / right_float;
+    }
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_value) {
+    u64 left_int;
+    u64 right_int;
+    SRESULT_UNWRAP(
+        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        (void)NULL
+    );
+    imm_value->type = ImmValue_Integral;
+    imm_value->body.integral = (u64)((i64)left_int % (i64)right_int);
+
+    return SRESULT_OK;
+}
+
 static SResult AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
     assert(self->type == AstNode_Number);
 
@@ -270,21 +687,7 @@ static SResult AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
 }
 
 static SResult AstNode_eval_operator(in AstNode* self, out ImmValue* imm_value) {
-    for(u32 i=0; i<LEN(OPERATORS); i++) {
-        if(Operator_cmp(&self->body.operator.operator, &OPERATORS[i])) {
-            if(OPERATORS[i].eval != NULL) {
-                SRESULT_UNWRAP(
-                    OPERATORS[i].eval(self, imm_value),
-                    (void)NULL
-                );
-            }else {
-                SResult result = {false, "cannot evaluate statically"};
-                return result;
-            }
-        }
-    }
-
-    PANIC("unreachable here");
+    return self->body.operator.operator.eval(self, imm_value);
 }
 
 SResult AstNode_eval(in AstNode* self, out ImmValue* imm_value) {
@@ -341,7 +744,7 @@ static ParserMsg AstNode_parse_number(inout Parser* parser, out AstNode** ptr) {
 }
 
 static ParserMsg AstTree_parse_number(in AstTree* self, inout Parser* parser) {
-    AstNode* ast_node;
+    AstNode* ast_node = NULL;
     PARSERMSG_UNWRAP(
         AstNode_parse_number(parser, &ast_node),
         (void)NULL
@@ -602,7 +1005,7 @@ static ParserMsg AstTree_parse_index(inout AstTree* self, inout Parser* parser, 
 }
 
 static ParserMsg AstTree_parse_parenblock(inout AstTree* self, inout Parser* parser, in Generator* generator) {
-    static Operator PAREN_OPERATOR = {"()", false, true, 16, NULL};
+    static Operator PAREN_OPERATOR = {"()", false, true, 16, AstNode_eval_operator_paren};
     static Operator BLOCK_OPERATOR = {"{}", false, true, 16, NULL};
     static u32 PRIORITY = 16;
 
