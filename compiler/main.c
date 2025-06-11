@@ -53,13 +53,14 @@ int main() {
 
     Generator gen3 = Generator_new(NULL);
     AstTree tree;
-    Parser parser4 = Parser_new("(3 >= 2) ? (5) : (13)");
+    Parser parser4 = Parser_new("sizeof \"ABC\"");
     if(ParserMsg_is_success(AstTree_parse(parser4, &gen3, &tree))) {
         AstTree_print(&tree);
         printf("\n\n");
         ImmValue immvalue;
-        if(SRESULT_IS_OK(AstTree_eval(&tree, &immvalue))) {
+        if(SRESULT_IS_OK(AstTree_eval(&tree, &gen3, &immvalue))) {
             ImmValue_print(&immvalue);
+            ImmValue_free(immvalue);
         }else {
             printf("failed");
         }

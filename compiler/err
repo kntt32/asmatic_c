@@ -1,0 +1,19 @@
+
+=================================================================
+==19425==ERROR: LeakSanitizer: detected memory leaks
+
+Direct leak of 4 byte(s) in 1 object(s) allocated from:
+    #0 0x72b39fefd9c7 in malloc ../../../../src/libsanitizer/asan/asan_malloc_linux.cpp:69
+    #1 0x64fc82a3734a in AstNode_eval_stringliteral /home/kntt/asmatic_c/compiler/ast.c:925
+    #2 0x64fc82a37831 in AstNode_eval /home/kntt/asmatic_c/compiler/ast.c:944
+    #3 0x64fc82a2a1c7 in AstNode_eval_operator_sizeof /home/kntt/asmatic_c/compiler/ast.c:419
+    #4 0x64fc82a36df1 in AstNode_eval_operator /home/kntt/asmatic_c/compiler/ast.c:908
+    #5 0x64fc82a377be in AstNode_eval /home/kntt/asmatic_c/compiler/ast.c:938
+    #6 0x64fc82a40f93 in AstTree_eval /home/kntt/asmatic_c/compiler/ast.c:1336
+    #7 0x64fc82a07530 in main /home/kntt/asmatic_c/compiler/main.c:61
+    #8 0x72b39f22a1c9 in __libc_start_call_main ../sysdeps/nptl/libc_start_call_main.h:58
+    #9 0x72b39f22a28a in __libc_start_main_impl ../csu/libc-start.c:360
+    #10 0x64fc82a06764 in _start (/home/kntt/asmatic_c/compiler/compiler.elf+0x27764) (BuildId: cc8813fe09c60e85a2452ba62ab0ab454690eb58)
+
+SUMMARY: AddressSanitizer: 4 byte(s) leaked in 1 allocation(s).
+make: *** [Makefile:38: run] Error 1

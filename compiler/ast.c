@@ -10,30 +10,31 @@
 #define OPERATOR_PRIORITY_MAX (20)
 #define OPERATOR_ADD {"+", true, true, 12}
 
-static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_and(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_or(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_xor(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_booland(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_boolor(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_equal(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_notequal(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_lessthan(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_greaterthan(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_add(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_invert(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_boolinvert(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_plus(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_minus(in AstNode* self, out ImmValue* imm_value);
-static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_sizeof(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_and(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_or(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_xor(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_booland(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_boolor(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_equal(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_notequal(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_lessthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_greaterthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_add(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_sub(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_mult(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_div(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_mod(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_invert(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_boolinvert(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_andref(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_plus(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_minus(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
+static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, in Generator* generator, out ImmValue* imm_value);
 
 static Operator OPERATORS[] = {
     {"sizeof", false, true, 15, AstNode_eval_operator_sizeof},
@@ -70,7 +71,7 @@ static Operator OPERATORS[] = {
     {"|=", true, true, 2, NULL},
 
     {".", true, true, 16, NULL},
-    {"&", false, true, 15, NULL},
+    {"&", false, true, 15, AstNode_eval_operator_andref},
     {"*", false, true, 15, NULL},
     {"+", false, true, 15, AstNode_eval_operator_plus},
     {"-", false, true, 15, AstNode_eval_operator_minus},
@@ -137,8 +138,38 @@ void ImmValue_print(in ImmValue* self) {
         case ImmValue_Floating:
             printf(".floating: %f", self->body.floating);
             break;
+        case ImmValue_VariablePtr:
+            printf(".variable_ptr: ");
+            Variable_print(&self->body.variable_ptr);
+            break;
+        case ImmValue_FnPtr:
+            printf(".fnptr: ");
+            Function_print(&self->body.fnptr);
+            break;
+        case ImmValue_StringLiteral:
+            printf(".string_literal: \"%s\"", self->body.string_literal);
+            break;
     }
     printf(" }");
+    return;
+}
+
+void ImmValue_free(ImmValue self) {
+    switch(self.type) {
+        case ImmValue_Integral:
+        case ImmValue_Floating:
+            break;
+        case ImmValue_VariablePtr:
+            Variable_free(self.body.variable_ptr);
+            break;
+        case ImmValue_FnPtr:
+            Function_free(self.body.fnptr);
+            break;
+        case ImmValue_StringLiteral:
+            free(self.body.string_literal);
+            break;
+    }
+
     return;
 }
 
@@ -211,6 +242,7 @@ static AstNode** AstNode_get_operand(in AstNode** self_ptr, u32 operator_priorit
         case AstNode_Variable:
         case AstNode_Function:
         case AstNode_Type:
+        case AstNode_StringLiteral:
             return self_ptr;
     }
 
@@ -264,6 +296,9 @@ void AstNode_print(in AstNode* self) {
             printf(".type: ");
             Type_print(&self->body.type);
             break;
+        case AstNode_StringLiteral:
+            printf(".string_literal: \"%s\"", self->body.string_literal);
+            break;
     }
 
     printf(" }");
@@ -298,11 +333,14 @@ void AstNode_free(AstNode self) {
             break;
         case AstNode_Type:
             break;
+        case AstNode_StringLiteral:
+            free(self.body.string_literal);
+            break;
     }
     return;
 }
 
-static SResult AstNode_eval_operator_integers_helper(in AstNode* self, out u64* left, out u64* right) {
+static SResult AstNode_eval_operator_integers_helper(in AstNode* self, in Generator* generator, out u64* left, out u64* right) {
     static SResult EXPECTED_ARGUMENT = {false, "expected argument"};
     if(self->body.operator.left == NULL || self->body.operator.right == NULL) {
         return EXPECTED_ARGUMENT;
@@ -312,66 +350,72 @@ static SResult AstNode_eval_operator_integers_helper(in AstNode* self, out u64* 
     ImmValue right_imm;
     
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.left, &left_imm),
+        AstNode_eval(self->body.operator.left, generator, &left_imm),
         (void)NULL
     );
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.right, &right_imm),
-        (void)NULL
+        AstNode_eval(self->body.operator.right, generator, &right_imm),
+        ImmValue_free(left_imm)
     );
 
     SRESULT_UNWRAP(
         ImmValue_as_integer(&left_imm, left),
-        (void)NULL
+        ImmValue_free(left_imm); ImmValue_free(right_imm)
     );
     SRESULT_UNWRAP(
         ImmValue_as_integer(&right_imm, right),
-        (void)NULL
+        ImmValue_free(left_imm); ImmValue_free(right_imm)
     );
+
+    ImmValue_free(left_imm);
+    ImmValue_free(right_imm);
 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_floatings_helper(in AstNode* self, out f64* left, out f64* right) {
+static SResult AstNode_eval_operator_floatings_helper(in AstNode* self, in Generator* generator, out f64* left, out f64* right) {
     ImmValue left_imm;
     ImmValue right_imm;
     
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.left, &left_imm),
+        AstNode_eval(self->body.operator.left, generator, &left_imm),
         (void)NULL
     );
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.right, &right_imm),
-        (void)NULL
+        AstNode_eval(self->body.operator.right, generator, &right_imm),
+        ImmValue_free(left_imm)
     );
 
     SRESULT_UNWRAP(
         ImmValue_as_floating(&left_imm, left),
-        (void)NULL
+        ImmValue_free(left_imm); ImmValue_free(right_imm)
     );
     SRESULT_UNWRAP(
         ImmValue_as_floating(&right_imm, right),
-        (void)NULL
+        ImmValue_free(left_imm); ImmValue_free(right_imm)
     );
+
+    ImmValue_free(left_imm);
+    ImmValue_free(right_imm);
 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_paren(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_paren(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     if(self->body.operator.left != NULL || self->body.operator.right == NULL) {
         SResult result = {false, "invalid arguments of () operator"};
         return result;
     }
 
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.right, imm_value),
+        AstNode_eval(self->body.operator.right, generator, imm_value),
         (void)NULL
     );
 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_sizeof(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     if(self->body.operator.left != NULL || self->body.operator.right == NULL) {
         SResult result = {false, "invalid arguments of sizeof operator"};
         return result;
@@ -379,7 +423,7 @@ static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_
 
     ImmValue arg_imm_value;
     SRESULT_UNWRAP(
-        AstNode_eval(self->body.operator.right, &arg_imm_value),
+        AstNode_eval(self->body.operator.right, generator, &arg_imm_value),
         (void)NULL
     );
 
@@ -389,19 +433,30 @@ static SResult AstNode_eval_operator_sizeof(in AstNode* self, out ImmValue* imm_
             imm_value->body.integral = 8;
             break;
         case ImmValue_Floating:
-            imm_value->body.floating = 8;
+            imm_value->body.integral = 8;
+            break;
+        case ImmValue_VariablePtr:
+            imm_value->body.integral = 8;
+            break;
+        case ImmValue_FnPtr:
+            imm_value->body.integral = 8;
+            break;
+        case ImmValue_StringLiteral:
+            imm_value->body.integral = strlen(arg_imm_value.body.string_literal) + 1;
             break;
     }
+
+    ImmValue_free(arg_imm_value);
 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_and(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_and(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -410,12 +465,12 @@ static SResult AstNode_eval_operator_and(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_or(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_or(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -424,12 +479,12 @@ static SResult AstNode_eval_operator_or(in AstNode* self, out ImmValue* imm_valu
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_xor(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_xor(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -438,12 +493,12 @@ static SResult AstNode_eval_operator_xor(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_booland(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_booland(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -452,12 +507,12 @@ static SResult AstNode_eval_operator_booland(in AstNode* self, out ImmValue* imm
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_boolor(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_boolor(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -466,16 +521,16 @@ static SResult AstNode_eval_operator_boolor(in AstNode* self, out ImmValue* imm_
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_equal(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_equal(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int == (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float == right_float;
     }
@@ -483,16 +538,16 @@ static SResult AstNode_eval_operator_equal(in AstNode* self, out ImmValue* imm_v
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_notequal(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_notequal(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int != (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float != right_float;
     }
@@ -500,16 +555,16 @@ static SResult AstNode_eval_operator_notequal(in AstNode* self, out ImmValue* im
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_lessthan(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_lessthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int > (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float > right_float;
     }
@@ -517,16 +572,16 @@ static SResult AstNode_eval_operator_lessthan(in AstNode* self, out ImmValue* im
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_greaterthan(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_greaterthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int < (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float < right_float;
     }
@@ -535,16 +590,16 @@ static SResult AstNode_eval_operator_greaterthan(in AstNode* self, out ImmValue*
    
 }
 
-static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int <= (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float <= right_float;
     }
@@ -553,16 +608,16 @@ static SResult AstNode_eval_operator_eqgreaterthan(in AstNode* self, out ImmValu
    
 }
 
-static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int >= (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = left_float >= right_float;
     }
@@ -571,12 +626,12 @@ static SResult AstNode_eval_operator_eqlessthan(in AstNode* self, out ImmValue* 
    
 }
 
-static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -585,12 +640,12 @@ static SResult AstNode_eval_operator_leftbitshift(in AstNode* self, out ImmValue
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -599,16 +654,16 @@ static SResult AstNode_eval_operator_rightbitshift(in AstNode* self, out ImmValu
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_add(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_add(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int + (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Floating;
         imm_value->body.floating = left_float + right_float;
     }
@@ -616,16 +671,16 @@ static SResult AstNode_eval_operator_add(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_sub(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int - (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Floating;
         imm_value->body.floating = left_float - right_float;
     }
@@ -633,16 +688,16 @@ static SResult AstNode_eval_operator_sub(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_mult(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int * (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Floating;
         imm_value->body.floating = left_float * right_float;
     }
@@ -650,16 +705,16 @@ static SResult AstNode_eval_operator_mult(in AstNode* self, out ImmValue* imm_va
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_div(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     f64 left_float;
     f64 right_float;
-    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, &left_int, &right_int))) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int))) {
         imm_value->type = ImmValue_Integral;
         imm_value->body.integral = (u64)((i64)left_int / (i64)right_int);
     }else {
-        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, &left_float, &right_float), (void)NULL);
+        SRESULT_UNWRAP(AstNode_eval_operator_floatings_helper(self, generator, &left_float, &right_float), (void)NULL);
         imm_value->type = ImmValue_Floating;
         imm_value->body.floating = left_float / right_float;
     }
@@ -667,11 +722,11 @@ static SResult AstNode_eval_operator_div(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_mod(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 left_int;
     u64 right_int;
     SRESULT_UNWRAP(
-        AstNode_eval_operator_integers_helper(self, &left_int, &right_int),
+        AstNode_eval_operator_integers_helper(self, generator, &left_int, &right_int),
         (void)NULL
     );
     imm_value->type = ImmValue_Integral;
@@ -680,40 +735,43 @@ static SResult AstNode_eval_operator_mod(in AstNode* self, out ImmValue* imm_val
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_aninteger_helper(in AstNode* self, out u64* value) {
+static SResult AstNode_eval_operator_aninteger_helper(in AstNode* self, in Generator* generator, out u64* value) {
     ImmValue imm_value;
     if(self->body.operator.operator.left_arg) {
         SRESULT_UNWRAP(
-            AstNode_eval(self->body.operator.left, &imm_value),
+            AstNode_eval(self->body.operator.left, generator, &imm_value),
             (void)NULL
         );
     }else {
         SRESULT_UNWRAP(
-            AstNode_eval(self->body.operator.right, &imm_value),
+            AstNode_eval(self->body.operator.right, generator, &imm_value),
             (void)NULL
         );
     }
 
     if(imm_value.type != ImmValue_Integral) {
+        ImmValue_free(imm_value);
         SResult result = {false, "expected integer"};
         return result;
     }
 
     *value = imm_value.body.integral;
 
+    ImmValue_free(imm_value);
+
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_afloating_helper(in AstNode* self, out f64* value) {
+static SResult AstNode_eval_operator_afloating_helper(in AstNode* self, in Generator* generator, out f64* value) {
     ImmValue imm_value;
     if(self->body.operator.operator.left_arg) {
         SRESULT_UNWRAP(
-            AstNode_eval(self->body.operator.left, &imm_value),
+            AstNode_eval(self->body.operator.left, generator, &imm_value),
             (void)NULL
         );
     }else {
         SRESULT_UNWRAP(
-            AstNode_eval(self->body.operator.right, &imm_value),
+            AstNode_eval(self->body.operator.right, generator, &imm_value),
             (void)NULL
         );
     }
@@ -723,17 +781,25 @@ static SResult AstNode_eval_operator_afloating_helper(in AstNode* self, out f64*
             *value = (f64)imm_value.body.integral;
             break;
         case ImmValue_Floating:
-            *value = (f64)imm_value.body.floating;
+            *value = imm_value.body.floating;
             break;
+        default:
+            {
+                ImmValue_free(imm_value);
+                SResult result = {false, "can't' to convert to floating value"};
+                return result;
+            }
     }
+
+    ImmValue_free(imm_value);
 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_invert(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_invert(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 value;
     SRESULT_UNWRAP(
-        AstNode_eval_operator_aninteger_helper(self, &value),
+        AstNode_eval_operator_aninteger_helper(self, generator, &value),
         (void)NULL
     );
 
@@ -743,10 +809,10 @@ static SResult AstNode_eval_operator_invert(in AstNode* self, out ImmValue* imm_
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_boolinvert(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_boolinvert(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     u64 value;
     SRESULT_UNWRAP(
-        AstNode_eval_operator_aninteger_helper(self, &value),
+        AstNode_eval_operator_aninteger_helper(self, generator, &value),
         (void)NULL
     );
 
@@ -756,10 +822,28 @@ static SResult AstNode_eval_operator_boolinvert(in AstNode* self, out ImmValue* 
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_plus(in AstNode* self, out ImmValue* imm_value) {
-    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, &imm_value->body.integral))) {
+static SResult AstNode_eval_operator_andref(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
+    SResult result = {false, "can't get pointer"};
+
+    if(self->body.operator.right == NULL || self->body.operator.right->type != AstNode_Variable) {
+        return result;
+    }
+
+    optional Variable* variable_ptr = Generator_get_variable(generator, self->body.operator.right->body.variable);
+    if(variable_ptr == NULL || !variable_ptr->static_flag) {
+        return result;
+    }
+
+    imm_value->type = ImmValue_VariablePtr;
+    imm_value->body.variable_ptr = Variable_clone(variable_ptr);
+
+    return SRESULT_OK;
+}
+
+static SResult AstNode_eval_operator_plus(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, generator, &imm_value->body.integral))) {
         imm_value->type = ImmValue_Integral;
-    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, &imm_value->body.floating))) {
+    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, generator, &imm_value->body.floating))) {
         imm_value->type = ImmValue_Floating;
     }else {
         SResult result = {false, "expected number"};
@@ -769,11 +853,11 @@ static SResult AstNode_eval_operator_plus(in AstNode* self, out ImmValue* imm_va
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_minus(in AstNode* self, out ImmValue* imm_value) {
-    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, &imm_value->body.integral))) {
+static SResult AstNode_eval_operator_minus(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
+    if(SRESULT_IS_OK(AstNode_eval_operator_aninteger_helper(self, generator, &imm_value->body.integral))) {
         imm_value->body.integral = - imm_value->body.integral;
         imm_value->type = ImmValue_Integral;
-    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, &imm_value->body.floating))) {
+    }else if(SRESULT_IS_OK(AstNode_eval_operator_afloating_helper(self, generator, &imm_value->body.floating))) {
         imm_value->body.floating = - imm_value->body.floating;
         imm_value->type = ImmValue_Floating;
     }else {
@@ -784,7 +868,7 @@ static SResult AstNode_eval_operator_minus(in AstNode* self, out ImmValue* imm_v
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     static SResult result = {false, "expected argument"};
     if(self->body.operator.left == NULL || self->body.operator.right == NULL) {
         return result;
@@ -799,26 +883,28 @@ static SResult AstNode_eval_operator_hatenacolon(in AstNode* self, out ImmValue*
 
     ImmValue arg_1;
     SRESULT_UNWRAP(
-        AstNode_eval(hatena_node->body.operator.left, &arg_1),
+        AstNode_eval(hatena_node->body.operator.left, generator, &arg_1),
         (void)NULL
     );
     u64 arg_1_u64;
     SRESULT_UNWRAP(
         ImmValue_as_integer(&arg_1, &arg_1_u64),
-        (void)NULL
+        ImmValue_free(arg_1)
     );
 
     if(arg_1_u64) {
         SRESULT_UNWRAP(
-            AstNode_eval(hatena_node->body.operator.right, imm_value),
-            (void)NULL
+            AstNode_eval(hatena_node->body.operator.right, generator, imm_value),
+            ImmValue_free(arg_1)
         );
     }else {
         SRESULT_UNWRAP(
-            AstNode_eval(self->body.operator.right, imm_value),
-            (void)NULL
+            AstNode_eval(self->body.operator.right, generator, imm_value),
+            ImmValue_free(arg_1)
         );
     }
+
+    ImmValue_free(arg_1);
 
     return SRESULT_OK;
 }
@@ -834,19 +920,49 @@ static SResult AstNode_eval_number(in AstNode* self, out ImmValue* imm_value) {
     return SRESULT_OK;
 }
 
-static SResult AstNode_eval_operator(in AstNode* self, out ImmValue* imm_value) {
-    return self->body.operator.operator.eval(self, imm_value);
+static SResult AstNode_eval_operator(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
+    return self->body.operator.operator.eval(self, generator, imm_value);
 }
 
-SResult AstNode_eval(in AstNode* self, out ImmValue* imm_value) {
+static SResult AstNode_eval_function(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
+    optional Function* function_ptr = Generator_get_function(generator, self->body.variable);
+    if(function_ptr == NULL) {
+        SResult result = {false, "variable can't be used here without & operator"};
+        return result;
+    }
+
+    imm_value->type = ImmValue_FnPtr;
+    imm_value->body.fnptr = Function_clone(function_ptr);
+
+    return SRESULT_OK;
+}
+
+SResult AstNode_eval_stringliteral(in AstNode* self, out ImmValue* imm_value) {
+    char* string_literal = malloc(sizeof(char) * (strlen(self->body.string_literal) + 1));
+    UNWRAP_NULL(string_literal);
+    strcpy(string_literal, self->body.string_literal);
+
+    imm_value->type = ImmValue_StringLiteral;
+    imm_value->body.string_literal = string_literal;
+
+    return SRESULT_OK;
+}
+
+SResult AstNode_eval(in AstNode* self, in Generator* generator, out ImmValue* imm_value) {
     switch(self->type) {
         case AstNode_Operator:
-            return AstNode_eval_operator(self, imm_value);
+            return AstNode_eval_operator(self, generator, imm_value);
         case AstNode_Number:
             return AstNode_eval_number(self, imm_value);
+        case AstNode_Variable:
+            return AstNode_eval_function(self, generator, imm_value);
+        case AstNode_StringLiteral:
+            return AstNode_eval_stringliteral(self, imm_value);
         default:
-            TODO();
-            break;
+            {
+                SResult result = {false, "can't evaluate statically"};
+                return result;
+            }
     }
 
     PANIC("unreachable here");
@@ -1188,11 +1304,35 @@ static ParserMsg AstTree_parse_paren(inout AstTree* self, inout Parser* parser, 
     return SUCCESS_PARSER_MSG;
 }
 
+ParserMsg AstTree_parse_stringliteral(inout AstTree* self, inout Parser* parser) {
+    optional AstNode** leaf = AstNode_get_leaf(&self->node);
+    if(leaf == NULL) {
+        ParserMsg msg = {parser->line, "unexpected token"};
+        return msg;
+    }
+
+    char* literal_ptr;
+    PARSERMSG_UNWRAP(
+        Parser_parse_stringliteral(parser, &literal_ptr),
+        (void)NULL
+    );
+
+    AstNode* node = malloc(sizeof(AstNode));
+    UNWRAP_NULL(node);
+
+    node->type = AstNode_StringLiteral;
+    node->body.string_literal = literal_ptr;
+    *leaf = node;
+
+    return SUCCESS_PARSER_MSG;
+}
+
 ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr) {
     ptr->node = NULL;
 
     while(!Parser_is_empty(&parser)) {
         if(!ParserMsg_is_success(AstTree_parse_number(ptr, &parser))
+            && !ParserMsg_is_success(AstTree_parse_stringliteral(ptr, &parser))
             && !ParserMsg_is_success(AstTree_parse_type_cast(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_index(ptr, &parser, generator))
             && !ParserMsg_is_success(AstTree_parse_paren(ptr, &parser, generator))
@@ -1208,8 +1348,8 @@ ParserMsg AstTree_parse(Parser parser, in Generator* generator, out AstTree* ptr
     return SUCCESS_PARSER_MSG;
 }
 
-SResult AstTree_eval(in AstTree* self, out ImmValue* imm_value) {
-    return AstNode_eval(self->node, imm_value);
+SResult AstTree_eval(in AstTree* self, in Generator* generator, out ImmValue* imm_value) {
+    return AstNode_eval(self->node, generator, imm_value);
 }
 
 

@@ -34,10 +34,8 @@ static SyntaxStatus Syntax_build_typedef(inout Parser* parser, inout Generator* 
     SYNTAX_ADD_ERROR(
         Parser_parse_ident(parser, type.name),
         generator,
-        {
-            Parser_skip_to_semicolon(parser);
-            Type_free(type);
-        }
+        Parser_skip_to_semicolon(parser);
+        Type_free(type);
     );
     SYNTAX_ADD_ERROR(
         Parser_parse_symbol(parser, ";"),
