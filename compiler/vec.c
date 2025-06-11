@@ -117,3 +117,17 @@ u32 Vec_size(Vec* self) {
     return self->size;
 }
 
+bool Vec_cmp(in Vec* self, in Vec* other, bool (in *cmp)(in void*, in void*)) {
+    if(Vec_len(self) != Vec_len(other)) {
+        return false;
+    }
+
+    for(u32 i=0; i<Vec_len(self); i++) {
+        if(!cmp(Vec_index(self, i), Vec_index(other, i))) {
+            return false;
+        }
+    }
+
+    return true;
+}
+

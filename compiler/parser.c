@@ -66,6 +66,11 @@ static bool Parser_skip(inout Parser* self) {
         free(ptr);
         return true;
     }
+
+    char c[3];
+    if(ParserMsg_is_success(Parser_parse_charliteral(self, c))) {
+        return true;
+    }
     
     char token[256];
     Parser_run_for_gap(self, token);
@@ -176,7 +181,7 @@ ParserMsg Parser_parse_ident(inout Parser* self, out char token[256]) {
     }
 
     for(u32 i=0; i<len; i++) {
-        if(!(isascii(token[i]) && (isalpha(token[i]) || (i != 0 && isalnum(token[i]))))) {
+        if(!(isascii(token[i]) && (token[i] == '_' || isalpha(token[i]) || (i != 0 && isalnum(token[i]))))) {
             return msg;
         }
     }
@@ -248,6 +253,26 @@ ParserMsg Parser_parse_number_raw(inout Parser* self, out char value[256]) {
     return SUCCESS_PARSER_MSG;
 }
 
+static ParserMsg Parser_parse_stringliteral_withescapeflag(char c, u32 line) {
+    ParserMsg msg = {line, "unknown escape sequence"};
+            
+    switch(c) {
+        case '0':
+        case 'n':
+        case 'r':
+        case '\\':
+        case 't':
+        case 'a':
+        case '"':
+        case '\'':
+            break;
+        default:
+            return msg;
+    }
+    
+    return SUCCESS_PARSER_MSG;
+}
+
 ParserMsg Parser_parse_stringliteral(inout Parser* self, out char** ptr) {
     Parser_skip_space(self);
     Parser self_copy = *self;
@@ -263,21 +288,10 @@ ParserMsg Parser_parse_stringliteral(inout Parser* self, out char** ptr) {
         
         if(escape_flag) {
             escape_flag = true;
-            ParserMsg msg = {self_copy.line, "unknown escape sequence"};
-            
-            switch(c) {
-                case '0':
-                case 'n':
-                case 'r':
-                case '\\':
-                case 't':
-                case 'a':
-                case '"':
-                case '\'':
-                    break;
-                default:
-                    return msg;
-            }
+            PARSERMSG_UNWRAP(
+                Parser_parse_stringliteral_withescapeflag(self_copy.line, c),
+                (void)NULL
+            );
         }
 
         switch(c) {
@@ -303,6 +317,51 @@ ParserMsg Parser_parse_stringliteral(inout Parser* self, out char** ptr) {
     }
 
     PANIC("unreachable here");
+    return SUCCESS_PARSER_MSG;
+}
+
+ParserMsg Parser_parse_charliteral(inout Parser* self, out char c[3]) {
+    ParserMsg msg = {self->line, "invalid token"};
+
+    Parser self_copy = *self;
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_symbol(self, "\'"),
+        (void)NULL
+    );
+
+    c[0] = Parser_read(self);
+    c[1] = '\0';
+    switch(c[0]) {
+        case '\0':
+            return msg;
+        case '\\':
+            c[1] = Parser_read(self);
+            switch(c[1]) {
+                case '0':
+                case 'n':
+                case 'r':
+                case '\\':
+                case 't':
+                case 'a':
+                case '"':
+                case '\'':
+                    break;
+                default:
+                    return msg;
+            }
+            c[2] = '\0';
+        default:
+            break;
+    }
+
+    PARSERMSG_UNWRAP(
+        Parser_parse_symbol(self, "\'"),
+        (void)NULL
+    );
+
+    *self = self_copy;
+
     return SUCCESS_PARSER_MSG;
 }
 

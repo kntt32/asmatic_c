@@ -39,3 +39,6 @@ u32 Vec_capacity(Vec* self);
 
 u32 Vec_size(Vec* self);
 
+bool Vec_cmp(in Vec* self, in Vec* other, bool (in *cmp)(in void*, in void*));
+
+

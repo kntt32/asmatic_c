@@ -240,6 +240,41 @@ ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* ty
     return SUCCESS_PARSER_MSG;
 }
 
+static bool Type_cmp_variable_cmp(in void* x, in void* y) {
+    return Variable_cmp((Variable*)x, (Variable*)y);
+}
+
+static bool Type_cmp_enummember_cmp(in void* x, in void* y) {
+    return EnumMember_cmp(x, y);
+}
+
+bool Type_cmp(in Type* self, in Type* other) {
+    if(self->type != other->type) {
+        return false;
+    }
+
+    switch(self->type) {
+        case Type_Struct:
+        case Type_Union:
+            if(!Vec_cmp(&self->property.members, &other->property.members, Type_cmp_variable_cmp)) {
+                return false;
+            }
+            break;
+        case Type_Enum:
+            if(!Vec_cmp(&self->property.enums, &other->property.members, Type_cmp_enummember_cmp)) {
+                return false;
+            }
+            break;
+        default:
+            break;
+    }
+
+    return self->ref_depth == other->ref_depth
+        && self->align == other->align
+        && self->size == other->size
+        && self->value_type == other->value_type;
+}
+
 static void Type_print_structmember(void* self) {
     Variable_print((Variable*)self);
     return;
@@ -346,6 +381,10 @@ ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out En
     return SUCCESS_PARSER_MSG;
 }
 
+bool EnumMember_cmp(in EnumMember* self, in EnumMember* other) {
+    return strcmp(self->name, other->name) && self->value == other->value;
+}
+
 void EnumMember_print(EnumMember* self) {
     printf("EnumMember { name: %s, value: %d }", self->name, self->value);
     return;
@@ -367,6 +406,25 @@ ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Typ
     }
 
     return SUCCESS_PARSER_MSG;
+}
+
+bool Storage_cmp(in Storage* self, in Storage* other) {
+    if(self->type != other->type) {
+        return false;
+    }
+
+    switch(self->type) {
+        case Storage_Default:
+        case Storage_Data:
+            return true;
+        case Storage_Register:
+            return self->place.reg == other->place.reg;
+        case Storage_Stack:
+            return self->place.base_offset == other->place.base_offset;
+    }
+
+    PANIC("unreachable");
+    return false;
 }
 
 void Storage_print(in Storage* self) {
@@ -408,6 +466,11 @@ ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data*
     *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
+}
+
+bool Data_cmp(in Data* self, in Data* other) {
+    return Type_cmp(&self->type, &other->type)
+        && Storage_cmp(&self->storage, &other->storage);
 }
 
 void Data_print(in Data* self) {
@@ -469,6 +532,14 @@ ParserMsg Variable_parse(inout Parser* parser, in Generator* generator, out Vari
     *parser = parser_copy;
 
     return SUCCESS_PARSER_MSG;
+}
+
+bool Variable_cmp(in Variable* self, in Variable* other) {
+    return strcmp(self->name, other->name)
+        && Data_cmp(&self->data, &other->data)
+        && self->const_flag == other->const_flag
+        && self->static_flag == other->static_flag
+        && self->len == other->len;
 }
 
 void Variable_print(in Variable* self) {
@@ -821,12 +892,28 @@ void Generator_stack_set(inout Generator* self, u32 offset) {
     return;
 }
 
-void Generator_add_function(inout Generator* self, Function function) {
-    Vec_push(&self->functions, &function);
-    return;
+static bool Generator_add_function_variable_cmp(in void* x, in void* y) {
+    return Variable_cmp((Variable*)x, (Variable*)y);
 }
 
-optional Function* Generator_get_function(inout Generator* self, in char* name) {
+SResult Generator_add_function(inout Generator* self, Function function) {
+    if(Generator_get_variable(self, function.name) != NULL) {
+        SResult result = {false, "variable has been defined"};
+        return result;
+    }
+    
+    optional Function* f_ptr = Generator_get_function(self, function.name);
+    if(f_ptr != NULL && !Vec_cmp(&f_ptr->arguments, &function.arguments, Generator_add_function_variable_cmp)) {
+        SResult result = {false, "function definition conflict occured"};
+        return result;
+    }
+    
+    Vec_push(&self->functions, &function);
+
+    return SRESULT_OK;
+}
+
+optional Function* Generator_get_function(in Generator* self, in char* name) {
     for(u32 i=0; i<Vec_len(&self->functions); i++) {
         Function* function = Vec_index(&self->functions, i);
         if(strcmp(function->name, name) == 0) {
@@ -837,14 +924,33 @@ optional Function* Generator_get_function(inout Generator* self, in char* name) 
     return NULL;
 }
 
-void Generator_add_global_variable(inout Generator* self, Variable variable) {
-    Vec_push(&self->global_variables, &variable);
-    return;
+static SResult Generator_add_variable_checker(in Generator* self, Variable* variable) {
+    if(Generator_get_variable(self, variable->name) != NULL || Generator_get_function(self, variable->name) != NULL) {
+        SResult result = {false, "variable has been already defined"};
+        return result;
+    }
+
+    return SRESULT_OK;
 }
 
-void Generator_add_local_variable(inout Generator* self, Variable variable) {
+SResult Generator_add_global_variable(inout Generator* self, Variable variable) {
+    SRESULT_UNWRAP(
+        Generator_add_variable_checker(self, &variable),
+        (void)NULL
+    );
+    Vec_push(&self->global_variables, &variable);
+    
+    return SRESULT_OK;
+}
+
+SResult Generator_add_local_variable(inout Generator* self, Variable variable) {
+    SRESULT_UNWRAP(
+        Generator_add_variable_checker(self, &variable),
+        (void)NULL
+    );
     Vec_push(&self->local_variables, &variable);
-    return;
+    
+    return SRESULT_OK;
 }
 
 optional Variable* Generator_get_variable(in Generator* self, in char* name) {

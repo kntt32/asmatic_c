@@ -88,23 +88,28 @@ typedef struct {
 
 extern Type TYPE_VOID;
 
+bool Type_cmp(in Type* self, in Type* other);
 ParserMsg Type_parse(inout Parser* parser, in Generator* generator, out Type* type);
 void Type_print(Type* self);
 Type Type_clone(in Type* self);
 void Type_free(Type self);
 
 ParserMsg EnumMember_parse(inout Parser* parser, in Generator* generator, out EnumMember* enum_member);
+bool EnumMember_cmp(in EnumMember* self, in EnumMember* other);
 void EnumMember_print(EnumMember* self);
 
 ParserMsg Storage_parse(inout Parser* parser, inout Generator* generator, in Type* type, out Storage* storage);
+bool Storage_cmp(in Storage* self, in Storage* other);
 void Storage_print(in Storage* self);
 
 ParserMsg Data_parse(inout Parser* parser, inout Generator* generator, out Data* data);
+bool Data_cmp(in Data* self, in Data* other);
 void Data_print(in Data* self);
 Data Data_clone(in Data* self);
 void Data_free(Data self);
 
 ParserMsg Variable_parse(inout Parser* parser, in Generator* generator, out Variable* variable);
+bool Variable_cmp(in Variable* self, in Variable* other);
 void Variable_print(in Variable* self);
 Variable Variable_clone(in Variable* self);
 void Variable_free(Variable self);
@@ -134,10 +139,10 @@ void Generator_asm_add_data(inout Generator* self, in char* s);
 void Generator_add_error(inout Generator* self, in Error err);
 u32 Generator_stack_push(inout Generator* self, in Type* type);
 u32 Generator_stack_get(inout Generator* self);
-void Generator_add_function(inout Generator* self, Function function);
-optional Function* Generator_get_function(inout Generator* self, in char* name);
-void Generator_add_global_variable(inout Generator* self, Variable variable);
-void Generator_add_local_variable(inout Generator* self, Variable variable);
+SResult Generator_add_function(inout Generator* self, Function function);
+optional Function* Generator_get_function(in Generator* self, in char* name);
+SResult Generator_add_global_variable(inout Generator* self, Variable variable);
+SResult Generator_add_local_variable(inout Generator* self, Variable variable);
 optional Variable* Generator_get_variable(in Generator* self, in char* name);
 u32 Generator_get_local_variables_count(in Generator* self);
 void Generator_set_local_variables_count(in Generator* self, u32 count);
